@@ -9,7 +9,7 @@ See `CONTEXT.md` for the domain language and `docs/adr/` for the decisions behin
 | Workspace          | What it is                                                            |
 | ------------------ | --------------------------------------------------------------------- |
 | `apps/web`         | SvelteKit app. Serves the health route today, the meter pages later.  |
-| `services/ingest`  | Plain-Node service. Will subscribe to MQTT and store Readings (#2).   |
+| `services/ingest`  | Plain-Node service. Subscribes to MQTT and stores Readings.           |
 | `packages/db`      | Prisma schema, migrations, and the client both processes share.       |
 
 ## Getting started
@@ -34,12 +34,16 @@ Both processes read a single `.env` at the repo root: `apps/web` loads it in `vi
 | Variable                    | Used by      | Required | Meaning                                                                       |
 | --------------------------- | ------------ | -------- | ----------------------------------------------------------------------------- |
 | `DATABASE_URL`              | both, Prisma | yes      | Postgres connection string. Include the user: `postgresql://user@host:5432/meter-reader?schema=public`. |
+| `MQTT_URL`                  | ingest       | yes      | Broker the Pi's rtl_433 publishes to: `mqtt://homeassistant.local:1883`.       |
+| `MQTT_TOPIC`                | ingest       | yes      | Topic the decoded transmissions arrive on, e.g. `rtl_433/+/events`.            |
+| `MQTT_USERNAME`             | ingest       | yes      | Broker username.                                                              |
+| `MQTT_PASSWORD`             | ingest       | yes      | Broker password.                                                              |
 | `SENTRY_DSN`                | both         | no       | Server-side Sentry DSN. Blank disables reporting.                             |
 | `SENTRY_ENVIRONMENT`        | both         | no       | Sentry environment name. Defaults to `development`.                           |
 | `PUBLIC_SENTRY_DSN`         | app          | no       | Browser Sentry DSN. Blank disables reporting.                                  |
 | `PUBLIC_SENTRY_ENVIRONMENT` | app          | no       | Browser Sentry environment name. Defaults to `development`.                    |
 
-The ingest service refuses to start without `DATABASE_URL` rather than failing on its first query.
+The ingest service refuses to start without `DATABASE_URL` or the `MQTT_*` variables rather than failing on its first query.
 
 ## Scripts
 
@@ -50,6 +54,9 @@ Run from the repo root.
 | `npm run dev`         | Starts the app and the ingest service together.                  |
 | `npm run build`       | Builds every workspace that has a build.                         |
 | `npm run check`       | Typechecks every workspace.                                      |
+| `npm run lint`        | Runs oxlint (correctness rules only).                            |
+| `npm run format`      | Formats the source with oxfmt.                                   |
+| `npm run format:check`| Fails if the source is not formatted, for CI.                    |
 | `npm test`            | Runs every workspace's tests.                                    |
 | `npm run db:generate` | Regenerates the Prisma client.                                   |
 | `npm run db:migrate`  | Creates and applies a migration from schema changes.             |

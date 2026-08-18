@@ -16,10 +16,15 @@
     "test": "npm run test --workspaces --if-present",
     "db:generate": "npm run generate --workspace packages/db",
     "db:migrate": "npm run migrate --workspace packages/db",
-    "db:deploy": "npm run deploy --workspace packages/db"
+    "db:deploy": "npm run deploy --workspace packages/db",
+    "lint": "oxlint",
+    "format": "oxfmt .",
+    "format:check": "oxfmt --check ."
   },
   "devDependencies": {
     "concurrently": "^10.0.4",
+    "oxfmt": "^0.63.0",
+    "oxlint": "^1.78.0",
     "typescript": "^5.9.3"
   },
   "engines": {

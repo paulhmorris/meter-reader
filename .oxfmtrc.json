@@ -1,0 +1,10 @@
+{
+  "$schema": "./node_modules/oxfmt/configuration_schema.json",
+  "ignorePatterns": [
+    "**/*.json",
+    "**/*.md",
+    "**/.svelte-kit/**",
+    "**/build/**",
+    "packages/db/src/generated/**"
+  ]
+}
