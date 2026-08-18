@@ -21,6 +21,12 @@ model Reading {
   meter       Meter    @relation(fields: [meterId], references: [id], onDelete: Cascade)
   /// The Meter's lifetime cumulative total in gallons.
   consumption Decimal  @db.Decimal(12, 1)
+  /// 0 none, 1 intermittent, 2 continuous — the meter's rolling 24-hour leak assessment.
+  activeLeak  Int      @db.SmallInt
+  /// Days on which a leak was seen, bucketed 0-6, never an exact number of days.
+  leakHistory Int      @db.SmallInt
+  backflow    Int      @db.SmallInt
+  noUse       Int      @db.SmallInt
   receivedAt  DateTime
 
   @@index([meterId, receivedAt])
