@@ -1,0 +1,3 @@
+# Claim codes instead of user accounts
+
+Neighbours are non-technical and the data is low-stakes, so the app has no accounts: entering a Claim Code issues a signed cookie (a Grant) naming one Meter, and that cookie is the identity. There is deliberately no browsable list of meters — the landing page is a single code input — because listing every meter the SDR overhears would publish a roster of the neighbourhood and invite occupancy inference from usage patterns. The cost is that a new device must be given the code again, and that the code space has to be large enough to survive guessing, since the code alone selects the meter.

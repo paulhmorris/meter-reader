@@ -1,0 +1,9 @@
+node_modules
+.env
+.env.*
+!.env.example
+.svelte-kit
+build
+dist
+packages/db/src/generated
+.DS_Store

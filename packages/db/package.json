@@ -1,0 +1,26 @@
+{
+  "name": "@meter-reader/db",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "generate": "prisma generate",
+    "migrate": "prisma migrate dev",
+    "deploy": "prisma migrate deploy",
+    "studio": "prisma studio",
+    "check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@prisma/adapter-pg": "^7.9.1",
+    "@prisma/client": "^7.9.1",
+    "prisma": "^7.9.1",
+    "dotenv": "^17.4.2"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3"
+  }
+}

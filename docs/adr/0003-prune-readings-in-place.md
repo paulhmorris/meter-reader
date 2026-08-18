@@ -1,0 +1,3 @@
+# Readings are pruned in place, events are kept forever
+
+A nightly job thins the Reading table by age — raw for 7 days, then last-per-hour to 60 days, last-per-day to 365, last-per-week beyond — because Usage is a difference of cumulative totals, so keeping the last Reading in a bucket preserves that bucket's Usage exactly and forever. Finer detail than the UI shows for that age is genuinely unrecoverable afterwards, which is the trade-off accepted in exchange for a table that never grows without bound. Meter Events (leak, backflow and no-use transitions) are written to their own table and never pruned, so alert history survives independently of the Readings that produced it.

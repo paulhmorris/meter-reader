@@ -1,0 +1,34 @@
+{
+  "name": "meter-reader",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "packages/*",
+    "apps/*",
+    "services/*"
+  ],
+  "scripts": {
+    "dev": "concurrently -n web,ingest -c cyan,magenta \"npm:dev:web\" \"npm:dev:ingest\"",
+    "dev:web": "npm run dev --workspace apps/web",
+    "dev:ingest": "npm run dev --workspace services/ingest",
+    "build": "npm run build --workspaces --if-present",
+    "check": "npm run check --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "db:generate": "npm run generate --workspace packages/db",
+    "db:migrate": "npm run migrate --workspace packages/db",
+    "db:deploy": "npm run deploy --workspace packages/db"
+  },
+  "devDependencies": {
+    "concurrently": "^10.0.4",
+    "typescript": "^5.9.3"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "allowScripts": {
+    "@prisma/engines@7.9.1": true,
+    "@sentry/cli@2.58.6": true,
+    "esbuild@0.28.2": true,
+    "prisma@7.9.1": true
+  }
+}

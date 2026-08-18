@@ -1,0 +1,27 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+/// A physical Neptune R900 water meter, identified by the 32-bit id in its radio transmission.
+model Meter {
+  id        BigInt    @id
+  createdAt DateTime  @default(now())
+  readings  Reading[]
+}
+
+/// One decoded R900 transmission from a Meter, with the time it was received.
+model Reading {
+  id          BigInt   @id @default(autoincrement())
+  meterId     BigInt
+  meter       Meter    @relation(fields: [meterId], references: [id], onDelete: Cascade)
+  /// The Meter's lifetime cumulative total in gallons.
+  consumption Decimal  @db.Decimal(12, 1)
+  receivedAt  DateTime
+
+  @@index([meterId, receivedAt])
+}
