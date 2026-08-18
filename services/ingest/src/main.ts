@@ -1,13 +1,24 @@
 import "./instrument.js";
 
 import * as Sentry from "@sentry/node";
+import type { MqttClient } from "mqtt";
 import { createPrismaClient } from "@meter-reader/db";
+import { subscribeToBroker } from "./broker.js";
 import { requireEnv } from "./env.js";
+import { handlePayload } from "./pipeline.js";
+import { prismaReadingStore } from "./store.js";
 
 requireEnv("DATABASE_URL");
+const broker = {
+  url: requireEnv("MQTT_URL"),
+  topic: requireEnv("MQTT_TOPIC"),
+  username: requireEnv("MQTT_USERNAME"),
+  password: requireEnv("MQTT_PASSWORD"),
+};
 
 const prisma = createPrismaClient();
-let keepAlive: NodeJS.Timeout | undefined;
+const store = prismaReadingStore(prisma);
+let client: MqttClient | undefined;
 let shuttingDown = false;
 
 function reportAndExit(error: unknown): void {
@@ -22,7 +33,7 @@ process.on("unhandledRejection", reportAndExit);
 async function shutdown(): Promise<void> {
   if (shuttingDown) return;
   shuttingDown = true;
-  clearInterval(keepAlive);
+  await client?.endAsync().catch(() => {});
   await prisma.$disconnect().catch(() => {});
   process.exit(0);
 }
@@ -30,12 +41,38 @@ async function shutdown(): Promise<void> {
 process.on("SIGINT", () => void shutdown());
 process.on("SIGTERM", () => void shutdown());
 
+// A Reading is compared against the Meter's last stored one, so payloads cannot overlap.
+let queue: Promise<void> = Promise.resolve();
+
+function enqueue(payload: Buffer): void {
+  queue = queue
+    .then(async () => {
+      const result = await handlePayload(store, payload, new Date());
+      if (result.status !== "rejected") return;
+
+      Sentry.captureMessage("ingest: Reading rejected, Consumption fell", {
+        level: "error",
+        extra: {
+          meterId: result.reading.meterId.toString(),
+          consumption: result.reading.consumption,
+          lastConsumption: result.lastConsumption,
+        },
+      });
+      console.error(
+        `ingest: rejected a Reading for meter ${result.reading.meterId}: ${result.reading.consumption} < ${result.lastConsumption} gallons`,
+      );
+    })
+    .catch((error: unknown) => {
+      console.error(error);
+      Sentry.captureException(error);
+    });
+}
+
 async function main(): Promise<void> {
   await prisma.$queryRaw`SELECT 1`;
-  console.log("ingest: database reachable, waiting for work");
+  console.log("ingest: database reachable");
 
-  // Nothing subscribes to MQTT yet (#2); hold the process open so `npm run dev` keeps both up.
-  keepAlive = setInterval(() => {}, 60_000);
+  client = subscribeToBroker(broker, enqueue);
 
   if (process.env.INGEST_DEBUG_SENTRY === "1") {
     throw new Error("Sentry test error from the meter-reader ingest service");

@@ -12,6 +12,7 @@
   "dependencies": {
     "@meter-reader/db": "*",
     "@sentry/node": "^10.70.0",
+    "mqtt": "^5.15.2",
     "tsx": "^4.23.12"
   },
   "devDependencies": {
