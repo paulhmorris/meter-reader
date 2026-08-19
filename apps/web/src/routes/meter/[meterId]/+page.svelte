@@ -31,8 +31,10 @@
 
   const isFresh = $derived(data.health === "fresh");
 
-  // The last daily period is today, so the hero figure and that day's bar can never disagree.
-  const today = $derived(data.daily.at(-1)?.gallons ?? 0);
+  // What today's chart adds up to. The day's own bar can read lower, since a day whose opening
+  // Reading is missing accounts for none of the water used before the first one we have.
+  const today = $derived(data.hourly.reduce((total, hour) => total + hour.gallons, 0));
+  const todayPartial = $derived(data.hourly.some((hour) => hour.partial));
 
   /** The seven whole days behind today — today is still in progress and would drag it down. */
   const weekAverage = $derived.by(() => {
@@ -73,7 +75,11 @@
       hero={{
         label: "Today",
         gallons: today,
-        hint: isFresh ? "so far" : "on the last readings we have",
+        hint: todayPartial
+          ? "so far, on the readings we have"
+          : isFresh
+            ? "so far"
+            : "on the last readings we have",
       }}
       secondary={{ label: "7-day average", gallons: weekAverage, hint: "per day" }}
     />
