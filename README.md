@@ -10,7 +10,8 @@ See `CONTEXT.md` for the domain language and `docs/adr/` for the decisions behin
 | ------------------ | --------------------------------------------------------------------- |
 | `apps/web`         | SvelteKit app. Claim Codes, Grants, the meter page and the Admin surface. |
 | `services/ingest`  | Plain-Node service. Subscribes to MQTT and stores Readings.           |
-| `packages/db`      | Prisma schema, migrations, and the client both processes share.       |
+| `services/prune`   | Plain-Node job. Thins old Readings by age, run nightly.               |
+| `packages/db`      | Prisma schema, migrations, and the client every process shares.       |
 
 ## Getting started
 
@@ -67,6 +68,19 @@ Run from the repo root.
 | `npm run db:migrate`  | Creates and applies a migration from schema changes.             |
 | `npm run db:deploy`   | Applies existing migrations, for CI and production.              |
 | `npm run db:seed`     | Seeds a demo Meter with Readings and prints its Claim Code.      |
+| `npm run prune`       | Thins old Readings once and exits. Run nightly (see below).      |
+
+## Pruning Readings
+
+`npm run prune` thins the Reading table by age — raw for 7 days, then the last Reading of each hour to 60 days, of each day to a year, of each week beyond (ADR-0003). Usage for any period the UI shows at that age is unchanged by a prune, and Meter Events are never touched. It deletes in batches, is safe to run against live ingest, and running it twice deletes nothing the second time.
+
+It runs once and exits, so schedule it nightly with cron or a systemd timer:
+
+```
+15 3 * * * cd /srv/meter-reader && npm run prune >> /var/log/meter-reader-prune.log 2>&1
+```
+
+Only `DATABASE_URL` is required. A failed run exits non-zero and reports to Sentry.
 
 ## Checking Sentry
 
