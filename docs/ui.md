@@ -1,18 +1,18 @@
-# UI redesign
+# UI
 
-The plan the neighbour and Admin surfaces are being rebuilt to, and where it has got to.
-Written for whoever picks this up next; delete it once step 4 lands.
+How the neighbour and Admin surfaces are built, and what a change to them has to keep.
 
 ## Decisions
 
-Settled with the repo owner up front. Do not relitigate them without asking.
+Settled with the repo owner. Do not relitigate them without asking.
 
 | Decision | Choice |
 | --- | --- |
-| Scope | All four surfaces: claim landing, meter page, Admin list, Admin meter |
-| JavaScript | **Required.** The surfaces no longer work with JS off. Deliberate; the owner declined an ADR for it |
+| Surfaces | Claim landing, meter page, Admin list, Admin meter |
+| JavaScript | **Required.** The surfaces do not work with JS off. Deliberate; the owner declined an ADR for it |
 | CSS | Tailwind v4, CSS-first. Every token lives in `apps/web/src/app.css` |
-| Components | shadcn-svelte (zinc base, sky accent), primitives in `$lib/components/ui` |
+| Components | shadcn-svelte, primitives in `$lib/components/ui` |
+| Palette | Warm: a paper-white background, warm greys, and a clay accent. Anthropic's, roughly |
 | Icons | `@lucide/svelte`. One icon set, no mixing |
 | Charts | LayerChart, because shadcn-svelte's own chart component wraps it |
 | Dark mode | Follows `prefers-color-scheme`. No toggle. The `dark:` variant is redefined to the media query in `app.css` |
@@ -27,42 +27,32 @@ Settled with the repo owner up front. Do not relitigate them without asking.
 
 Four marks have to stay distinguishable in both themes, and the tokens for them are in `app.css`:
 
-- **Usage** — `--chart-usage`
+- **Usage** — `--chart-usage`, an ochre that carries the warm palette without reaching the red a
+  leak is drawn in
 - **An Active Leak overlapping the period** — `--chart-leak`, tinting the whole bar
 - **Partial** — a hatch drawn over whichever tone is beneath. It stays on the bar rather than
   moving into the tooltip, because ADR-0002 is a promise about what the reader can see
 - **The comparison overlay** — `--chart-ghost`, ghost bars behind the real ones, off by default
 
-## Where it has got to
+## Conventions
 
-Steps 1 and 2 are committed to `main`.
-
-1. **Foundation.** Tailwind, shadcn-svelte, the token layer, dark mode, oxfmt config.
-2. **Neighbour surfaces.** The meter page leads with today's Usage and the seven-day average in
-   one card, lifetime Consumption and last-heard demoted to muted text, a Leak Banner above
-   everything, both charts drawn by LayerChart, an event timeline, and `Card`-based landing and
-   leak-warnings surfaces. Components named after `CONTEXT.md` terms sit in `$lib/components`
-   for the Admin surface to share. `$lib/server/leaks.ts` derives which periods overlapped an
-   Active Leak from the Meter Events already recorded.
-
-### 3. Presets, brush and drill-down — not started
-
-- `Granularity` in `periods.ts` gains `week` and `month`; `usage.ts` needs a `STALE_AFTER_MS`
-  entry for each. **Reason the Partial rule through against ADR-0003 first**: pruning thins
-  Readings to one an hour past a week old, so a month bucket built from thinned Readings is
-  still exact at its boundaries and should rarely be Partial. Getting this wrong misleads
-  people about leaks, so it wants its own tests before any UI is written.
-- Presets, brush-to-zoom (LayerChart's `BarChart` takes a `brush` prop), tap-a-day drill-down.
-- `CONTEXT.md`'s **Partial** entry describes period boundaries; amend it to cover the coarser
-  periods once they exist.
-
-### 4. Admin surface — not started
-
-Tokens are already inherited. Remaining: a table for the meter list with sortable columns and
-health badges, and — the one change worth making on merit — a confirmation dialog before
-rotating a Claim Code, which today happens on a single unguarded click.
-
-## Conventions this introduced
+- **The chart's state is split on purpose.** The preset and the drill-down are in the URL, so they
+  survive a reload and a share; the brush is component state, because it is a gesture. Brushing
+  filters the data rather than using LayerChart's `zoomOnBrush`, which narrows its own scale and
+  leaves the `Bars` layers drawing at `NaN`.
+- **A tap and a drag are the same gesture to `BrushContext`.** It swallows pointer events over the
+  plot, so drilling in hangs off `onBrushEnd` with an inactive brush, on the period the tooltip
+  last sat over. The sr-only table carries the same links for anyone not using a pointer.
+- **Weeks and months take the *daily* Partial tolerance of an hour**, because their boundaries are
+  Chicago midnights and every tier a prune leaves behind keeps the last Reading of its bucket —
+  one an hour to 60 days, one a Chicago day to a year — which lands a Heartbeat before a
+  midnight. Past a year only one Reading a Monday week survives, which a week boundary is and
+  the first of a month is not, so months that old read Partial, which is what they are.
+- **The Admin table says less than the meter page does.** `MeterHealthBadge` takes `short`, and the
+  Admin list uses it, because a column has room for "Stale" and not for the sentence a neighbour
+  reading one meter gets.
+- **A dialog's buttons are portalled out of any form they sit in.** The Claim Code confirmation
+  submits by `form="issue-code"` id rather than by containment.
 
 - **`apps/web/tailwind.sort.config.js` is not a build config.** Tailwind v4 is configured in
   `app.css`. That file exists only because oxfmt's class sorter reads a v3-shaped config;
@@ -93,6 +83,8 @@ for d in *.deb; do dpkg-deb -x "$d" libs; done
 wrong" — a page that scrolled sideways, a hero reading 0 gallons above a chart showing water,
 an axis drawn around an empty window — passed `check`, `lint` and the full test suite.
 
-`npm run db:seed` seeds half a day of Readings, which is not enough to exercise the chart: no
-Partial periods, no leak, nothing in the 30-day view. Seed a month with a gap and a leak window
-instead when you need to see the colour language work.
+`npm run db:seed` seeds 400 days: quarter-hourly water use throughout, but only the Readings a
+prune would have spared, plus a day-long gap and a leak window. It seeds one Meter, so an Admin
+list worth looking at wants a few more rows inserted by hand. Storing anything other than a
+bucket's *last* Reading is what an earlier seed got wrong, and it painted every month in the
+12-month view Partial — a fault in the seed that looked exactly like a fault in the rule.

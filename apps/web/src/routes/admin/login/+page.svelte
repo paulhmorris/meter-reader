@@ -1,5 +1,10 @@
 <script lang="ts">
   import { enhance } from "$app/forms";
+  import { Button } from "$lib/components/ui/button/index.js";
+  import { Card } from "$lib/components/ui/card/index.js";
+  import { Input } from "$lib/components/ui/input/index.js";
+  import { Label } from "$lib/components/ui/label/index.js";
+  import KeyRound from "@lucide/svelte/icons/key-round";
   import type { ActionData } from "./$types.js";
 
   let { form }: { form: ActionData } = $props();
@@ -7,38 +12,37 @@
 
 <svelte:head><title>Admin</title></svelte:head>
 
-<h1>Admin</h1>
+<div class="mx-auto max-w-sm py-8">
+  <div
+    class="bg-primary/10 mb-5 flex size-11 items-center justify-center rounded-xl text-primary"
+    aria-hidden="true"
+  >
+    <KeyRound class="size-5" />
+  </div>
 
-<form method="post" use:enhance>
-  <label for="password">Password</label>
-  <input
-    id="password"
-    name="password"
-    type="password"
-    autocomplete="current-password"
-    required
-    aria-invalid={form?.error ? "true" : undefined}
-  />
-  <button type="submit">Sign in</button>
-</form>
+  <h1 class="text-2xl font-semibold tracking-tight">Admin</h1>
+  <p class="mt-1.5 text-sm text-muted-foreground">
+    Sign in to see every meter the receiver has heard of.
+  </p>
 
-{#if form?.error}
-  <p class="error" role="alert">{form.error}</p>
-{/if}
+  <Card class="mt-6 p-5">
+    <form method="post" use:enhance class="grid gap-3">
+      <div class="grid gap-2">
+        <Label for="password">Password</Label>
+        <Input
+          id="password"
+          name="password"
+          type="password"
+          autocomplete="current-password"
+          required
+          aria-invalid={form?.error ? "true" : undefined}
+        />
+      </div>
+      <Button type="submit">Sign in</Button>
+    </form>
 
-<style>
-  form {
-    display: grid;
-    gap: 0.5rem;
-  }
-
-  input,
-  button {
-    font-size: 1rem;
-    padding: 0.5rem;
-  }
-
-  .error {
-    color: var(--danger);
-  }
-</style>
+    {#if form?.error}
+      <p class="text-sm text-danger" role="alert">{form.error}</p>
+    {/if}
+  </Card>
+</div>
