@@ -8,7 +8,7 @@
     hint?: string;
   }
 
-  let { hero, secondary }: { hero: Stat; secondary: Stat } = $props();
+  let { hero, secondary }: { hero: Omit<Stat, "hint">; secondary: Stat } = $props();
 
   const gallons = new Intl.NumberFormat(undefined, { maximumFractionDigits: 1 });
 
@@ -20,8 +20,9 @@
     const run = (to: number) => {
       if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return render(to);
       animate(shown, to, {
-        duration: 0.7,
-        ease: [0.16, 1, 0.3, 1],
+        type: "spring",
+        visualDuration: 0.45,
+        bounce: 0.15,
         onUpdate: (n) => render((shown = n)),
       });
     };
@@ -40,9 +41,6 @@
       </span>
       <span class="text-sm text-muted-foreground">gal</span>
     </p>
-    {#if hero.hint}
-      <p class="mt-1 text-xs text-muted-foreground">{hero.hint}</p>
-    {/if}
   </div>
 
   <div class="w-px bg-border" aria-hidden="true"></div>

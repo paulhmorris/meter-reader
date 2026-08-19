@@ -23,6 +23,8 @@ export default {
         border: "var(--border)",
         input: "var(--input)",
         ring: "var(--ring)",
+        fresh: "var(--fresh)",
+        "fresh-foreground": "var(--fresh-foreground)",
         warning: "var(--warning)",
         "warning-foreground": "var(--warning-foreground)",
         danger: "var(--danger)",

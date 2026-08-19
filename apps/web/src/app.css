@@ -28,7 +28,9 @@
   --input: oklch(0.902 0.01 82);
   --ring: oklch(0.63 0.128 43);
 
-  /* Stale is a caution, broken is a failure: the two Meter health states CONTEXT.md distinguishes. */
+  /* Fresh is a Meter heard within the hour; stale is a caution and broken a failure (CONTEXT.md). */
+  --fresh: oklch(0.552 0.117 152);
+  --fresh-foreground: oklch(0.985 0.004 92);
   --warning: oklch(0.673 0.137 62);
   --warning-foreground: oklch(0.216 0.008 67);
   --danger: oklch(0.553 0.187 27);
@@ -64,6 +66,8 @@
     --input: oklch(1 0 0 / 15%);
     --ring: oklch(0.705 0.122 45);
 
+    --fresh: oklch(0.696 0.132 154);
+    --fresh-foreground: oklch(0.183 0.006 71);
     --warning: oklch(0.771 0.148 66);
     --warning-foreground: oklch(0.183 0.006 71);
     --danger: oklch(0.664 0.178 27);
@@ -103,6 +107,8 @@
   --color-input: var(--input);
   --color-ring: var(--ring);
 
+  --color-fresh: var(--fresh);
+  --color-fresh-foreground: var(--fresh-foreground);
   --color-warning: var(--warning);
   --color-warning-foreground: var(--warning-foreground);
   --color-danger: var(--danger);

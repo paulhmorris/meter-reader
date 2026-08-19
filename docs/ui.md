@@ -16,9 +16,9 @@ Settled with the repo owner. Do not relitigate them without asking.
 | Icons | `@lucide/svelte`. One icon set, no mixing |
 | Charts | LayerChart, because shadcn-svelte's own chart component wraps it |
 | Dark mode | Follows `prefers-color-scheme`. No toggle. The `dark:` variant is redefined to the media query in `app.css` |
-| Motion | motion.dev, rich: bar transitions, hero count-up, banner entrance. Honour `prefers-reduced-motion` |
-| Chart state | Preset and drill-down in the URL; the transient brush in component state |
-| Ranges | Presets (Today / 7d / 30d / 12mo) plus brush-to-zoom. No free-form date picker |
+| Motion | Springs, not tweens: bars pop up from the axis, the hero counts up, the banner flies in. Honour `prefers-reduced-motion` |
+| Chart state | Preset and drill-down in the URL. Nothing about the chart is component state |
+| Ranges | Presets (Today / 7d / 30d / 12mo) and tap-to-drill. No range brush, no free-form date picker |
 | Data transport | SvelteKit remote functions, falling back to a JSON endpoint if they misbehave |
 | Loading | Dim the previous chart rather than swapping in a skeleton. Empty windows are plain text |
 | Tests | Unit tests, server-side only. No component or browser tests |
@@ -36,13 +36,16 @@ Four marks have to stay distinguishable in both themes, and the tokens for them 
 
 ## Conventions
 
-- **The chart's state is split on purpose.** The preset and the drill-down are in the URL, so they
-  survive a reload and a share; the brush is component state, because it is a gesture. Brushing
-  filters the data rather than using LayerChart's `zoomOnBrush`, which narrows its own scale and
-  leaves the `Bars` layers drawing at `NaN`.
-- **A tap and a drag are the same gesture to `BrushContext`.** It swallows pointer events over the
-  plot, so drilling in hangs off `onBrushEnd` with an inactive brush, on the period the tooltip
-  last sat over. The sr-only table carries the same links for anyone not using a pointer.
+- **The chart carries no state of its own.** The preset and the drill-down are in the URL, so they
+  survive a reload and a share. LayerChart's brush was tried and taken back out: it swallows every
+  pointer event over the plot, so reading one period and selecting a range fought each other.
+- **A drag reads a period, a tap opens it.** Both hang off the plot container rather than the bar
+  rects — a quiet day is a target a few pixels wide — and a press that travels more than 8px is a
+  drag, so releasing on a bar after reading across the chart does not navigate. The sr-only table
+  carries the same links for anyone not using a pointer.
+- **Bars are keyed by period, not by index.** A new window retires the old bars outright and the new
+  ones spring up from the axis; keyed by index they would crawl from the old heights to the new,
+  which reads as one window melting into another.
 - **Weeks and months take the *daily* Partial tolerance of an hour**, because their boundaries are
   Chicago midnights and every tier a prune leaves behind keeps the last Reading of its bucket —
   one an hour to 60 days, one a Chicago day to a year — which lands a Heartbeat before a

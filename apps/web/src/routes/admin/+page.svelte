@@ -113,7 +113,7 @@
               </Table.Cell>
               <Table.Cell class="px-3 py-3">
                 <div class="flex flex-col items-start gap-1">
-                  <MeterHealthBadge health={meter.health} short />
+                  <MeterHealthBadge health={meter.health} lastHeardAt={meter.lastHeardAt} short />
                   {#if meter.activeLeak && meter.activeLeak !== "none"}
                     <Badge class="border-transparent bg-danger text-danger-foreground">
                       {LEAK[meter.activeLeak]}

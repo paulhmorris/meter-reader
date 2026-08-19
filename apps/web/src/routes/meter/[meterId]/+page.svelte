@@ -5,9 +5,11 @@
   import LeakBanner from "$lib/components/LeakBanner.svelte";
   import MeterHealthBadge from "$lib/components/MeterHealthBadge.svelte";
   import StatCard from "$lib/components/StatCard.svelte";
+  import { Badge } from "$lib/components/ui/badge/index.js";
   import UsageChart, { type ChartPeriod } from "$lib/components/UsageChart.svelte";
   import type { Granularity } from "$lib/granularity.js";
   import LeakWarnings from "$lib/LeakWarnings.svelte";
+  import RotateCcw from "@lucide/svelte/icons/rotate-ccw";
   import type { Preset, View } from "$lib/server/ranges.js";
   import type { PageData } from "./$types.js";
 
@@ -75,7 +77,7 @@
   <header class="flex items-center justify-between gap-3">
     <h1 class="text-lg font-semibold tracking-tight">Meter {data.meterId}</h1>
     {#if data.health}
-      <MeterHealthBadge health={data.health} />
+      <MeterHealthBadge health={data.health} lastHeardAt={data.reading?.receivedAt ?? null} />
     {/if}
   </header>
 
@@ -97,15 +99,7 @@
     {/if}
 
     <StatCard
-      hero={{
-        label: "Today",
-        gallons: data.today,
-        hint: data.todayPartial
-          ? "so far, on the readings we have"
-          : isFresh
-            ? "so far"
-            : "on the last readings we have",
-      }}
+      hero={{ label: "Today", gallons: data.today }}
       secondary={{ label: "7-day average", gallons: data.weekAverage, hint: "per day" }}
     />
 
@@ -149,7 +143,15 @@
         </nav>
       {/if}
 
-      <h2 class="text-sm font-medium">{stretch}, {BY[range.granularity]}</h2>
+      <div class="flex items-center justify-between gap-3">
+        <h2 class="text-sm font-medium">{stretch}, {BY[range.granularity]}</h2>
+        {#if range.drilled}
+          <Badge variant="outline" href={chartHref(range.preset)} class="gap-1">
+            <RotateCcw class="size-3" aria-hidden="true" />
+            Reset
+          </Badge>
+        {/if}
+      </div>
 
       {#if range.granularity === "week"}
         <p class="text-xs text-muted-foreground">

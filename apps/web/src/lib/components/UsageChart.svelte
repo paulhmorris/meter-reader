@@ -29,65 +29,49 @@
 
   const gallons = new Intl.NumberFormat(undefined, { maximumFractionDigits: 1 });
 
-  let context = $state<any>();
-  /** The period the pointer last sat over, kept because a tap clears the tooltip before it lands. */
-  let hovered = $state<ChartPeriod | null>(null);
-  /** The stretch a brush has narrowed the chart to. Deliberately not in the URL: it is a gesture. */
-  let brushed = $state<{ from: number; to: number } | null>(null);
-
-  const shown = $derived.by(() => {
-    const stretch = brushed;
-    if (stretch === null) return periods;
-    return periods.filter(
-      (period) => period.start.getTime() >= stretch.from && period.start.getTime() <= stretch.to,
-    );
-  });
-
-  const plain = $derived(shown.filter((period) => !period.leaking));
-  const leaking = $derived(shown.filter((period) => period.leaking));
-  const partial = $derived(shown.filter((period) => period.partial));
+  const plain = $derived(periods.filter((period) => !period.leaking));
+  const leaking = $derived(periods.filter((period) => period.leaking));
+  const partial = $derived(periods.filter((period) => period.partial));
   const anyPartial = $derived(partial.some((period) => period.gallons > 0));
   const anyLeaking = $derived(leaking.some((period) => period.gallons > 0));
-  const anyUsage = $derived(shown.some((period) => period.gallons > 0));
+  const anyUsage = $derived(periods.some((period) => period.gallons > 0));
 
   const describe = (period: ChartPeriod) => periodName(granularity, period);
+
+  let context = $state<any>();
+  /** Where a press started, so a drag that ends on a bar reads as a drag and not as a tap. */
+  let pressedAt: { x: number; y: number } | null = null;
 
   const still =
     typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-  /** Bars land in the same bands whichever subset they come from, so tone can be a layer per tone. */
+  /**
+   * Bars land in the same bands whichever subset they come from, so tone can be a layer per tone.
+   * Keying by period rather than by index retires the old window's bars outright, so a new window
+   * springs up from the axis instead of the old heights crawling to the new ones.
+   */
   const layer = {
     radius: 3,
-    rounded: "top",
-    motion: still ? "none" : "tween",
+    rounded: "top" as const,
+    motion: still
+      ? ("none" as const)
+      : ({ type: "spring", stiffness: 0.22, damping: 0.55 } as const),
     initialHeight: 0,
     tooltip: true,
-  } as const;
-
-  $effect(() => {
-    const under = context?.tooltip?.data ?? null;
-    if (under) hovered = under;
-  });
+    key: (period: ChartPeriod) => period.start.getTime(),
+  };
 
   /**
-   * A drag narrows the chart to what it covered; a tap opens whatever it landed on. The selection
-   * itself is thrown away: narrowing the data is what narrows the chart, so the two cannot disagree.
+   * A tap opens the period the tooltip is on, which is the whole band rather than the bar itself:
+   * a day of little water is a target a few pixels wide.
    */
-  function onBrushEnd({
-    brush,
-  }: {
-    brush: { active?: boolean; x: (Date | number | string | null)[]; reset: () => void };
-  }) {
-    const [from, to] = brush.x;
+  function onpointerup(event: PointerEvent) {
+    const from = pressedAt;
+    pressedAt = null;
 
-    if (brush.active && from instanceof Date && to instanceof Date) {
-      brushed = { from: Math.min(+from, +to), to: Math.max(+from, +to) };
-      brush.reset();
-      return;
-    }
-
-    if (drillHref && hovered) goto(drillHref(hovered));
-    else brushed = null;
+    const dragged = from && Math.hypot(event.clientX - from.x, event.clientY - from.y) > 8;
+    const period = context?.tooltip?.data as ChartPeriod | undefined;
+    if (!dragged && drillHref && period) goto(drillHref(period));
   }
 </script>
 
@@ -98,16 +82,21 @@
       for all of it.
     </p>
   {:else}
-    <div class={height}>
+    <!-- The sr-only table below carries the same periods and links; this is the pointer's copy. -->
+    <div
+      class={height}
+      role="presentation"
+      onpointerdown={(event) => (pressedAt = { x: event.clientX, y: event.clientY })}
+      {onpointerup}
+    >
       <BarChart
         bind:context
-        data={shown}
+        data={periods}
         x="start"
         y="gallons"
         bandPadding={0.25}
         grid={{ y: true, x: false }}
         rule={false}
-        brush={{ axis: "x", zoomOnBrush: false, onBrushEnd }}
         props={{
           xAxis: {
             format: (value: Date) => tick(granularity, value),
@@ -169,7 +158,7 @@
       <caption>Water used per period</caption>
       <thead><tr><th scope="col">Period</th><th scope="col">Gallons</th></tr></thead>
       <tbody>
-        {#each shown as period (period.start.getTime())}
+        {#each periods as period (period.start.getTime())}
           <tr>
             <th scope="row">
               {#if drillHref}
@@ -190,16 +179,7 @@
   </div>
 
   <figcaption class="mt-3 space-y-1.5 text-xs text-muted-foreground">
-    <p>
-      {#if brushed}
-        Showing {describe(shown[0])} to {describe(shown[shown.length - 1])}.
-        <button class="underline underline-offset-2" onclick={() => (brushed = null)}>
-          Show all of it
-        </button>
-      {:else}
-        Drag across the chart to look closer{drillHref ? ", or tap a bar to open it" : ""}.
-      {/if}
-    </p>
+    <p>Drag across the chart to read each one{drillHref ? ", or tap a bar to open it" : ""}.</p>
     {#if anyLeaking}
       <p class="flex items-start gap-2">
         <span class="mt-0.5 size-3 shrink-0 rounded-sm bg-chart-leak" aria-hidden="true"></span>
