@@ -56,8 +56,8 @@
   {#if bars.some(({ period }) => period.partial)}
     <p class="note">
       <span class="key" aria-hidden="true"></span>
-      The meter went unheard from around these times, so the water shown for them is too low or too
-      high. It is what the readings we do have add up to — we would rather show that than guess.
+      The meter went unheard from around these times, so the water shown for them is too low or too high.
+      It is what the readings we do have add up to — we would rather show that than guess.
     </p>
   {/if}
 {/snippet}

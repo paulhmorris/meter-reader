@@ -9,7 +9,11 @@
     timeZone: "America/Chicago",
   });
 
-  const HEALTH = { fresh: "", stale: "Stale — unheard for over a day", broken: "Unheard for over three days" };
+  const HEALTH = {
+    fresh: "",
+    stale: "Stale — unheard for over a day",
+    broken: "Unheard for over three days",
+  };
 </script>
 
 <svelte:head><title>Admin — meters</title></svelte:head>
