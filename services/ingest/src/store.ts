@@ -31,7 +31,7 @@ export function prismaReadingStore(prisma: PrismaClient): ReadingStore {
       };
     },
 
-    async save(reading, receivedAt) {
+    async save(reading, receivedAt, events) {
       await prisma.$transaction([
         prisma.meter.upsert({
           where: { id: reading.meterId },
@@ -48,6 +48,15 @@ export function prismaReadingStore(prisma: PrismaClient): ReadingStore {
             noUse: reading.flags.noUse,
             receivedAt,
           },
+        }),
+        prisma.meterEvent.createMany({
+          data: events.map((event) => ({
+            meterId: reading.meterId,
+            flag: event.flag,
+            from: event.from,
+            to: event.to,
+            occurredAt: receivedAt,
+          })),
         }),
       ]);
     },

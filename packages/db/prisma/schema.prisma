@@ -9,9 +9,10 @@ datasource db {
 
 /// A physical Neptune R900 water meter, identified by the 32-bit id in its radio transmission.
 model Meter {
-  id         BigInt      @id
-  createdAt  DateTime    @default(now())
+  id         BigInt       @id
+  createdAt  DateTime     @default(now())
   readings   Reading[]
+  events     MeterEvent[]
   claimCodes ClaimCode[]
   grants     Grant[]
 }
@@ -32,6 +33,26 @@ model Reading {
   receivedAt  DateTime
 
   @@index([meterId, receivedAt])
+}
+
+/// The Meter flags whose transitions are recorded, Leak History excluded as it is a bucket rather than a state.
+enum MeterEventFlag {
+  activeLeak
+  backflow
+  noUse
+}
+
+/// A recorded transition of one of the Meter's flags from one value to another. Kept forever, never pruned (ADR-0003).
+model MeterEvent {
+  id         BigInt         @id @default(autoincrement())
+  meterId    BigInt
+  meter      Meter          @relation(fields: [meterId], references: [id], onDelete: Cascade)
+  flag       MeterEventFlag
+  from       Int            @db.SmallInt
+  to         Int            @db.SmallInt
+  occurredAt DateTime
+
+  @@index([meterId, occurredAt])
 }
 
 /// A secret string that names exactly one Meter and proves the holder is entitled to see it.

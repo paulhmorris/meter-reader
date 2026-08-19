@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 import type { R900Flags, R900Reading } from "./r900.js";
-import { recordReading, type ReadingStore, type StoredReading } from "./record.js";
+import {
+  type MeterEventDraft,
+  recordReading,
+  type ReadingStore,
+  type StoredReading,
+} from "./record.js";
 
 const quiet: R900Flags = { activeLeak: 0, leakHistory: 0, backflow: 0, noUse: 0 };
 const receivedAt = new Date("2026-08-18T12:00:00Z");
@@ -9,13 +14,18 @@ function reading(fields: Partial<R900Reading> = {}): R900Reading {
   return { meterId: 1n, consumption: "100.0", flags: quiet, ...fields };
 }
 
-function fakeStore(last: StoredReading | null): ReadingStore & { saved: R900Reading[] } {
+function fakeStore(
+  last: StoredReading | null,
+): ReadingStore & { saved: R900Reading[]; events: MeterEventDraft[][] } {
   const saved: R900Reading[] = [];
+  const events: MeterEventDraft[][] = [];
   return {
     saved,
+    events,
     lastReading: async () => last,
-    save: async (reading) => {
+    save: async (reading, _receivedAt, drafts) => {
       saved.push(reading);
+      events.push(drafts);
     },
   };
 }
@@ -113,5 +123,71 @@ describe("recordReading", () => {
       status: "suppressed",
     });
     expect(saved).toEqual([reading({ meterId: 1n })]);
+  });
+
+  it.each([
+    ["Active Leak", 0, 2, "activeLeak"],
+    ["Active Leak", 2, 0, "activeLeak"],
+    ["backflow", 0, 1, "backflow"],
+    ["backflow", 1, 0, "backflow"],
+    ["no-use", 0, 1, "noUse"],
+    ["no-use", 1, 0, "noUse"],
+  ] as const)("records a Meter Event when %s moves from %d to %d", async (_, from, to, flag) => {
+    const store = fakeStore(lastStored({ flags: { ...quiet, [flag]: from } }));
+    await recordReading(store, reading({ flags: { ...quiet, [flag]: to } }), minutesAfter(1));
+
+    expect(store.events).toEqual([[{ flag, from, to }]]);
+  });
+
+  it("records one Meter Event per flag that moved", async () => {
+    const store = fakeStore(lastStored({ flags: { ...quiet, activeLeak: 1 } }));
+    const changed = reading({ flags: { activeLeak: 0, leakHistory: 2, backflow: 1, noUse: 0 } });
+    await recordReading(store, changed, minutesAfter(1));
+
+    expect(store.events).toEqual([
+      [
+        { flag: "activeLeak", from: 1, to: 0 },
+        { flag: "backflow", from: 0, to: 1 },
+      ],
+    ]);
+  });
+
+  it("records no Meter Event for a Leak History bucket that has moved", async () => {
+    const store = fakeStore(lastStored());
+    await recordReading(store, reading({ flags: { ...quiet, leakHistory: 3 } }), minutesAfter(1));
+
+    expect(store.saved).toHaveLength(1);
+    expect(store.events).toEqual([[]]);
+  });
+
+  it("records no Meter Event when only Consumption has risen", async () => {
+    const store = fakeStore(lastStored());
+    await recordReading(store, reading({ consumption: "100.1" }), minutesAfter(1));
+
+    expect(store.events).toEqual([[]]);
+  });
+
+  it("records no Meter Event for a Heartbeat", async () => {
+    const store = fakeStore(lastStored({ flags: { ...quiet, activeLeak: 1 } }));
+    const result = await recordReading(
+      store,
+      reading({ flags: { ...quiet, activeLeak: 1 } }),
+      minutesAfter(15),
+    );
+
+    expect(result).toEqual({ status: "heartbeat" });
+    expect(store.events).toEqual([[]]);
+  });
+
+  it("records no Meter Event for the first Reading from a Meter never heard from before", async () => {
+    const store = fakeStore(null);
+    await recordReading(
+      store,
+      reading({ flags: { ...quiet, activeLeak: 2, noUse: 1 } }),
+      receivedAt,
+    );
+
+    expect(store.saved).toHaveLength(1);
+    expect(store.events).toEqual([[]]);
   });
 });
