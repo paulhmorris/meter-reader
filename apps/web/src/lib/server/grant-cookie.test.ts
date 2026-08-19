@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { readSignedGrantId, signGrantId } from "./grant-cookie.js";
+import { GRANT_COOKIE_OPTIONS, readSignedGrantId, signGrantId } from "./grant-cookie.js";
 
 const secret = "a-test-secret";
 const grantId = "01J8Z5X0000000000000000000";
@@ -32,5 +32,12 @@ describe("signed Grant cookie", () => {
 
   it("keeps the Grant id readable in the cookie, with the signature appended", () => {
     expect(signGrantId(grantId, secret)).toMatch(new RegExp(`^${grantId}\\.[\\w-]{43}$`));
+  });
+});
+
+describe("Grant cookie options", () => {
+  it("keeps the cookie off plain HTTP and out of scripts", () => {
+    expect(GRANT_COOKIE_OPTIONS.secure).toBe(true);
+    expect(GRANT_COOKIE_OPTIONS.httpOnly).toBe(true);
   });
 });

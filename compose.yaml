@@ -1,0 +1,98 @@
+name: meter-reader
+
+x-image: &image
+  image: meter-reader:latest
+  build: .
+
+x-shared-env: &shared-env
+  DATABASE_URL: postgresql://meter:${POSTGRES_PASSWORD}@postgres:5432/meter-reader?schema=public
+  SENTRY_DSN: ${SENTRY_DSN}
+  SENTRY_ENVIRONMENT: production
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: meter
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: meter-reader
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U meter -d meter-reader"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  migrate:
+    <<: *image
+    restart: "no"
+    command: npm run db:deploy
+    environment: *shared-env
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  web:
+    <<: *image
+    restart: unless-stopped
+    environment:
+      <<: *shared-env
+      ORIGIN: ${ORIGIN}
+      GRANT_SECRET: ${GRANT_SECRET}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
+      PUBLIC_SENTRY_DSN: ${PUBLIC_SENTRY_DSN}
+      PUBLIC_SENTRY_ENVIRONMENT: production
+      # cloudflared puts the neighbour's address here; without it every household shares one rate-limit bucket.
+      ADDRESS_HEADER: CF-Connecting-IP
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          'node -e "fetch(''http://localhost:3000/health'').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))"',
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+  ingest:
+    <<: *image
+    restart: unless-stopped
+    command: npm run start --workspace services/ingest
+    environment:
+      <<: *shared-env
+      MQTT_URL: ${MQTT_URL}
+      MQTT_TOPIC: ${MQTT_TOPIC}
+      MQTT_USERNAME: ${MQTT_USERNAME}
+      MQTT_PASSWORD: ${MQTT_PASSWORD}
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run
+    environment:
+      TUNNEL_TOKEN: ${TUNNEL_TOKEN}
+    depends_on:
+      - web
+
+  # Nightly, from the host's crontab: docker compose run --rm prune
+  prune:
+    <<: *image
+    profiles: [tools]
+    restart: "no"
+    command: npm run start --workspace services/prune
+    environment: *shared-env
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  pgdata:

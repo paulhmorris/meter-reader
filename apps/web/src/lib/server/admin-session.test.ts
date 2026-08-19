@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  ADMIN_COOKIE_OPTIONS,
   ADMIN_SESSION_MAX_AGE_MS,
   adminSessionKey,
   isAdminSession,
@@ -52,5 +53,12 @@ describe("isAdminSession", () => {
 
   it("refuses a session whose issue time is not a time", () => {
     expect(isAdminSession(signValue("soon", secret, "admin"), secret, issuedAt)).toBe(false);
+  });
+});
+
+describe("Admin cookie options", () => {
+  it("keeps the cookie off plain HTTP and out of scripts", () => {
+    expect(ADMIN_COOKIE_OPTIONS.secure).toBe(true);
+    expect(ADMIN_COOKIE_OPTIONS.httpOnly).toBe(true);
   });
 });

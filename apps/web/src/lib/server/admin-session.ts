@@ -34,9 +34,11 @@ export function isAdminSession(cookie: string | undefined, secret: string, now: 
   return age >= 0 && age < ADMIN_SESSION_MAX_AGE_MS;
 }
 
+/** `secure` is set for the reason `GRANT_COOKIE_OPTIONS` gives. */
 export const ADMIN_COOKIE_OPTIONS = {
   path: "/",
   httpOnly: true,
+  secure: true,
   sameSite: "lax",
   maxAge: ADMIN_SESSION_MAX_AGE_MS / 1000,
 } as const;

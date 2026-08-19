@@ -46,10 +46,82 @@ Both processes read a single `.env` at the repo root: `apps/web` loads it in `vi
 | `SENTRY_ENVIRONMENT`        | both         | no       | Sentry environment name. Defaults to `development`.                           |
 | `PUBLIC_SENTRY_DSN`         | app          | no       | Browser Sentry DSN. Blank disables reporting.                                  |
 | `PUBLIC_SENTRY_ENVIRONMENT` | app          | no       | Browser Sentry environment name. Defaults to `development`.                    |
+| `ORIGIN`                    | app          | in prod  | Where the app is served, e.g. `https://meter.example.com`. adapter-node rejects form posts from any other origin. |
+| `ADDRESS_HEADER`            | app          | in prod  | Header carrying the client address behind a proxy. `CF-Connecting-IP` behind the tunnel. |
 
 Claim attempts are rate-limited per client address. Behind a reverse proxy, set adapter-node's `ADDRESS_HEADER` (and `XFF_DEPTH`) so the app sees the neighbour's address rather than the proxy's — otherwise every household shares one bucket.
 
 The ingest service refuses to start without `DATABASE_URL` or the `MQTT_*` variables rather than failing on its first query.
+
+## Deploying
+
+Everything runs as Docker Compose services on one machine on the same LAN as Home Assistant, because the ingest service has to reach the MQTT broker there (ADR-0005). Cloudflare Tunnel puts the app on the internet without forwarding a port.
+
+```sh
+git clone https://github.com/paulhmorris/meter-reader /srv/meter-reader
+cd /srv/meter-reader
+cp .env.production.example .env    # then fill it in
+docker compose up -d --build
+```
+
+The tunnel is half a dashboard job. In Cloudflare Zero Trust, under Networks → Tunnels, create a tunnel, copy its connector token into `TUNNEL_TOKEN`, and add a public hostname routing the domain in `ORIGIN` to `http://web:3000` — the service name on the compose network, not localhost. The connector comes up either way, so without that route the site answers 502 rather than failing to start.
+
+`.env` beside `compose.yaml` holds every secret and is never committed. Compose builds `DATABASE_URL` from `POSTGRES_PASSWORD`, and both processes report to Sentry with the environment `production` rather than the `development` a local `.env` gives them.
+
+`ORIGIN` must match what the browser shows exactly. adapter-node rejects form posts from any other origin, so getting it wrong breaks claiming and Admin sign-in while every page still loads.
+
+| Service      | What it does                                                                |
+| ------------ | --------------------------------------------------------------------------- |
+| `postgres`   | Postgres 17, on the `pgdata` volume. Reachable only from the other services. |
+| `migrate`    | Runs `prisma migrate deploy` and exits. `web` and `ingest` wait for it.      |
+| `web`        | The SvelteKit app on port 3000, published to no host port.                   |
+| `ingest`     | Subscribes to the broker and stores Readings.                                |
+| `cloudflared`| The tunnel that serves `ORIGIN`.                                         |
+| `prune`      | Thins old Readings. Not started with the others; run nightly (below).        |
+
+`web` and `ingest` are `restart: unless-stopped`, so both come back on failure and after a reboot.
+
+### Reaching the app
+
+Only through the tunnel. The app reads the neighbour's address from `CF-Connecting-IP`, which cloudflared sets, and adapter-node **fails the request** if that header is missing — so a claim or an Admin sign-in that somehow bypassed the tunnel is a 500 rather than a household silently sharing everyone else's rate-limit bucket. Nothing publishes a host port, so there is no way round it by default.
+
+### Restarting
+
+```sh
+docker compose restart ingest      # or web, or cloudflared
+docker compose logs -f ingest      # what it is doing
+docker compose ps                  # web reports healthy from GET /health
+```
+
+### Updating
+
+```sh
+docker compose exec -T postgres pg_dump --clean --if-exists -U meter meter-reader | gzip > ~/meter-reader-$(date +%F).sql.gz
+git pull
+docker compose up -d --build
+```
+
+Migrations run before the new `web` and `ingest` start, so a deploy never serves a schema the code has not caught up to.
+
+### Rolling back
+
+Code alone rolls back by checking out the previous commit and rebuilding:
+
+```sh
+git checkout <previous-sha>
+docker compose up -d --build
+```
+
+Prisma migrations are forward-only — there are no down migrations. If the deploy being undone applied one, the old code will meet a schema it does not expect, so restore the database from the dump taken just before it:
+
+```sh
+docker compose stop web ingest
+# The dump drops what it recreates, so it restores over the live schema.
+gunzip -c ~/meter-reader-<date>.sql.gz | docker compose exec -T postgres psql -U meter -d meter-reader
+docker compose start web ingest
+```
+
+Readings that arrived after the dump are lost — a gap in a chart, and never wrong numbers, since Usage is a difference of stored Consumption values (ADR-0002). Rolling back across a migration is the only case that needs this; take the dump every time regardless.
 
 ## Scripts
 
@@ -74,11 +146,13 @@ Run from the repo root.
 
 `npm run prune` thins the Reading table by age — raw for 7 days, then the last Reading of each hour to 60 days, of each day to a year, of each week beyond (ADR-0003). Usage for any period the UI shows at that age is unchanged by a prune, and Meter Events are never touched. It deletes in batches, is safe to run against live ingest, and running it twice deletes nothing the second time.
 
-It runs once and exits, so schedule it nightly with cron or a systemd timer:
+It runs once and exits, so schedule it nightly from the host's crontab:
 
 ```
-15 3 * * * cd /srv/meter-reader && npm run prune >> /var/log/meter-reader-prune.log 2>&1
+15 3 * * * cd /srv/meter-reader && docker compose run --rm prune >> /var/log/meter-reader-prune.log 2>&1
 ```
+
+Locally, or outside Docker, `npm run prune` does the same thing.
 
 Only `DATABASE_URL` is required. A failed run exits non-zero and reports to Sentry.
 
