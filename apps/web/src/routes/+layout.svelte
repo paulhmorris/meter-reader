@@ -9,6 +9,7 @@
 <style>
   :global(:root) {
     --muted: #555;
+    --bar: canvastext;
   }
 
   main {

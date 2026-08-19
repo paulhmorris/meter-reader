@@ -64,6 +64,67 @@ describe("usageByPeriod", () => {
     expect(after).toMatchObject({ gallons: 60, partial: true });
   });
 
+  it("still trusts an idle Meter whose Heartbeats land a little over 15 minutes apart", async () => {
+    const idle = store([
+      ["2026-06-15T22:44:10Z", 1000],
+      ["2026-06-15T22:59:20Z", 1000],
+      ["2026-06-15T23:14:30Z", 1000],
+      ["2026-06-15T23:29:40Z", 1000],
+      ["2026-06-15T23:44:50Z", 1000],
+      ["2026-06-16T00:00:00Z", 1000],
+    ]);
+    const [hour] = await usageByPeriod(
+      { store: idle },
+      {
+        meterId,
+        granularity: "hour",
+        from: new Date("2026-06-15T23:00:00Z"),
+        to: new Date("2026-06-16T00:30:00Z"),
+      },
+    );
+
+    expect(hour).toMatchObject({ gallons: 0, partial: false });
+  });
+
+  it("marks a period Partial when the Reading opening it is too old to vouch for", async () => {
+    const [hour] = await usageByPeriod(
+      {
+        store: store([
+          ["2026-06-15T22:00:00Z", 1000],
+          ["2026-06-15T23:30:00Z", 1020],
+          ["2026-06-15T23:55:00Z", 1025],
+        ]),
+      },
+      {
+        meterId,
+        granularity: "hour",
+        from: new Date("2026-06-15T23:00:00Z"),
+        to: new Date("2026-06-16T00:30:00Z"),
+      },
+    );
+
+    expect(hour).toMatchObject({ gallons: 25, partial: true });
+  });
+
+  it("marks a period Partial when the Reading closing it is too old to vouch for", async () => {
+    const [hour] = await usageByPeriod(
+      {
+        store: store([
+          ["2026-06-15T22:50:00Z", 1000],
+          ["2026-06-15T23:05:00Z", 1020],
+        ]),
+      },
+      {
+        meterId,
+        granularity: "hour",
+        from: new Date("2026-06-15T23:00:00Z"),
+        to: new Date("2026-06-16T00:30:00Z"),
+      },
+    );
+
+    expect(hour).toMatchObject({ gallons: 20, partial: true });
+  });
+
   it("reads a period whose Readings are all identical as zero Usage", async () => {
     const flat = store([
       ["2026-06-15T22:45:00Z", 1000],

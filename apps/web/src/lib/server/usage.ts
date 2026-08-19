@@ -17,11 +17,12 @@ export interface UsagePeriod {
 
 /**
  * How stale a boundary Reading may be before the Consumption at that boundary counts as unknown:
- * a Heartbeat for hours, an hour for days, since pruning thins Readings to one an hour past a
- * week old and a day of Usage survives that intact (ADR-0003).
+ * a Heartbeat plus slack for hours, since a Heartbeat is forced once 15 minutes have *elapsed* and
+ * so lands a transmission or two late; an hour for days, since pruning thins Readings to one an
+ * hour past a week old and a day of Usage survives that intact (ADR-0003).
  */
 const STALE_AFTER_MS: Record<Granularity, number> = {
-  hour: 15 * 60 * 1000,
+  hour: 20 * 60 * 1000,
   day: 60 * 60 * 1000,
 };
 

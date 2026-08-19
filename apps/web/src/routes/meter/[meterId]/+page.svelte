@@ -30,7 +30,7 @@
 
   function describe(period: UsagePeriod, label: string): string {
     const used = `${label}: ${gallons.format(period.gallons)} gallons`;
-    return period.partial ? `${used}, partial — readings are missing near its edges` : used;
+    return period.partial ? `${used}, partial — the meter went unheard from around then` : used;
   }
 
   const hourly = $derived(bars(data.hourly, hourLabel));
@@ -50,6 +50,13 @@
       </li>
     {/each}
   </ul>
+  {#if bars.some(({ period }) => period.partial)}
+    <p class="note">
+      <span class="key" aria-hidden="true"></span>
+      The meter went unheard from around these times, so the water shown for them is too low or too
+      high. It is what the readings we do have add up to — we would rather show that than guess.
+    </p>
+  {/if}
 {/snippet}
 
 <svelte:head><title>Meter {data.meterId}</title></svelte:head>
@@ -100,18 +107,31 @@
   }
 
   .bar {
-    background: currentColor;
+    background: var(--bar);
     border-radius: 2px 2px 0 0;
     min-height: 1px;
   }
 
-  /* Readings are missing near this period's edges, so its Usage is off either way (ADR-0002). */
-  .partial {
-    background: repeating-linear-gradient(
-      45deg,
-      currentColor 0 2px,
-      transparent 2px 4px
-    );
+  /* Stripes mark a period whose Usage is off either way, Readings being missing near its edges. */
+  .partial,
+  .key {
+    background: repeating-linear-gradient(45deg, var(--bar) 0 2px, transparent 2px 4px);
+  }
+
+  .note {
+    display: flex;
+    color: var(--muted);
+    gap: 0.5rem;
+    font-size: 0.75rem;
+    line-height: 1.4;
+  }
+
+  .key {
+    flex: none;
+    width: 0.75rem;
+    height: 0.75rem;
+    margin-top: 0.15rem;
+    border-radius: 2px;
   }
 
   .label {
