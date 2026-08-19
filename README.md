@@ -8,7 +8,7 @@ See `CONTEXT.md` for the domain language and `docs/adr/` for the decisions behin
 
 | Workspace          | What it is                                                            |
 | ------------------ | --------------------------------------------------------------------- |
-| `apps/web`         | SvelteKit app. Claim Codes, Grants and the meter page.                |
+| `apps/web`         | SvelteKit app. Claim Codes, Grants, the meter page and the Admin surface. |
 | `services/ingest`  | Plain-Node service. Subscribes to MQTT and stores Readings.           |
 | `packages/db`      | Prisma schema, migrations, and the client both processes share.       |
 
@@ -19,14 +19,14 @@ Requires Node 22+ and a PostgreSQL 17 server.
 ```sh
 npm install
 createdb meter-reader
-cp .env.example .env     # then set DATABASE_URL and GRANT_SECRET
+cp .env.example .env     # then set DATABASE_URL, GRANT_SECRET and ADMIN_PASSWORD
 npm run db:generate
 npm run db:deploy        # applies the checked-in migrations
 npm run db:seed          # a demo Meter with Readings, and a Claim Code to enter
 npm run dev              # starts the app and the ingest service together
 ```
 
-`npm run dev` serves the app on http://localhost:5173. The landing page takes the Claim Code printed by `npm run db:seed` and sends you to that Meter's page. `GET /health` round-trips Postgres: 200 with `{"status":"ok"}` when the database answers, 503 with the failure reason when it does not.
+`npm run dev` serves the app on http://localhost:5173. The landing page takes the Claim Code printed by `npm run db:seed` and sends you to that Meter's page. `/admin` takes `ADMIN_PASSWORD` and lists every Meter, where Claim Codes are issued and rotated and Grants revoked. `GET /health` round-trips Postgres: 200 with `{"status":"ok"}` when the database answers, 503 with the failure reason when it does not.
 
 ## Environment variables
 
@@ -34,7 +34,8 @@ Both processes read a single `.env` at the repo root: `apps/web` loads it in `vi
 
 | Variable                    | Used by      | Required | Meaning                                                                       |
 | --------------------------- | ------------ | -------- | ----------------------------------------------------------------------------- |
-| `GRANT_SECRET`              | app          | yes      | Signs the Grant cookie. Any long random string: `openssl rand -base64 32`. Changing it invalidates every Grant. |
+| `GRANT_SECRET`              | app          | yes      | Signs the Grant and Admin cookies. Any long random string: `openssl rand -base64 32`. Changing it invalidates every Grant and signs out the Admin. |
+| `ADMIN_PASSWORD`            | app          | no       | What the Admin signs in with at `/admin`. Unset or blank, the Admin surface admits nobody. |
 | `DATABASE_URL`              | both, Prisma | yes      | Postgres connection string. Include the user: `postgresql://user@host:5432/meter-reader?schema=public`. |
 | `MQTT_URL`                  | ingest       | yes      | Broker the Pi's rtl_433 publishes to: `mqtt://homeassistant.local:1883`.       |
 | `MQTT_TOPIC`                | ingest       | yes      | Topic the decoded transmissions arrive on, e.g. `rtl_433/+/events`.            |

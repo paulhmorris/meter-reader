@@ -11,9 +11,9 @@ export function prismaAccessStore(prisma: PrismaClient): AccessStore {
       return claimCode?.meterId ?? null;
     },
 
-    async createGrant({ meterId, claimCode, now }) {
+    async createGrant({ meterId, claimCode, device, now }) {
       const grant = await prisma.grant.create({
-        data: { meterId, claimCode, createdAt: now },
+        data: { meterId, claimCode, device, createdAt: now },
         select: { id: true },
       });
       return grant.id;

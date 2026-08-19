@@ -14,7 +14,8 @@ export const load: PageServerLoad = async ({ params, locals }) => {
   const meterId = parseMeterId(params.meterId);
 
   // A Meter nobody granted this device is indistinguishable from one that does not exist.
-  if (meterId === null || locals.grant?.meterId !== meterId) error(404, "Not found");
+  const allowed = locals.admin || locals.grant?.meterId === meterId;
+  if (meterId === null || !allowed) error(404, "Not found");
 
   const now = new Date();
   const usage = { store: prismaUsageStore(prisma()) };

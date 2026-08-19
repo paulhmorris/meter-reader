@@ -10,7 +10,12 @@ export interface Grant {
 export interface AccessStore {
   /** The Meter a Claim Code names, or null if no unrotated code matches. */
   meterForClaimCode(code: string): Promise<bigint | null>;
-  createGrant(input: { meterId: bigint; claimCode: string; now: Date }): Promise<string>;
+  createGrant(input: {
+    meterId: bigint;
+    claimCode: string;
+    device: string | null;
+    now: Date;
+  }): Promise<string>;
   /** The Grant, unless it has been revoked or never existed. */
   activeGrant(grantId: string): Promise<Grant | null>;
 }
@@ -31,7 +36,7 @@ export type ClaimResult =
  */
 export async function claim(
   { store, limiter }: AccessDeps,
-  { code, client, now }: { code: string; client: string; now: Date },
+  { code, client, device, now }: { code: string; client: string; device: string | null; now: Date },
 ): Promise<ClaimResult> {
   if (!limiter.allow(client, now)) return { status: "rate-limited" };
 
@@ -41,7 +46,7 @@ export async function claim(
   const meterId = await store.meterForClaimCode(claimCode);
   if (meterId === null) return { status: "rejected" };
 
-  const grantId = await store.createGrant({ meterId, claimCode, now });
+  const grantId = await store.createGrant({ meterId, claimCode, device, now });
   return { status: "granted", grantId, meterId };
 }
 

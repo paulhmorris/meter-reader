@@ -32,12 +32,13 @@ describe("claim", () => {
       {
         code,
         client: "1.2.3.4",
+        device: null,
         now,
       },
     );
 
     expect(result).toEqual({ status: "granted", grantId: "grant-1", meterId });
-    expect(createGrant).toHaveBeenCalledWith({ meterId, claimCode: code, now });
+    expect(createGrant).toHaveBeenCalledWith({ meterId, claimCode: code, device: null, now });
   });
 
   it("accepts the Claim Code as the Admin hands it out", async () => {
@@ -47,6 +48,7 @@ describe("claim", () => {
       {
         code: ` ${formatClaimCode(code).toLowerCase()} `,
         client: "1.2.3.4",
+        device: null,
         now,
       },
     );
@@ -61,8 +63,8 @@ describe("claim", () => {
       limiter: limiter(),
     };
 
-    const first = await claim(deps, { code, client: "1.2.3.4", now });
-    const second = await claim(deps, { code, client: "5.6.7.8", now });
+    const first = await claim(deps, { code, client: "1.2.3.4", device: null, now });
+    const second = await claim(deps, { code, client: "5.6.7.8", device: null, now });
 
     expect([first, second]).toEqual([
       { status: "granted", grantId: "grant-1", meterId },
@@ -73,7 +75,7 @@ describe("claim", () => {
   it("rejects an unknown code without saying whether the Meter exists", async () => {
     const result = await claim(
       { store: store(), limiter: limiter() },
-      { code, client: "1.2.3.4", now },
+      { code, client: "1.2.3.4", device: null, now },
     );
     expect(result).toEqual({ status: "rejected" });
   });
@@ -85,6 +87,7 @@ describe("claim", () => {
       {
         code: "nope",
         client: "1.2.3.4",
+        device: null,
         now,
       },
     );
@@ -95,17 +98,21 @@ describe("claim", () => {
 
   it("rate-limits a client that keeps guessing", async () => {
     const deps = { store: store(), limiter: createRateLimiter({ limit: 2, windowMs: 60_000 }) };
-    await claim(deps, { code, client: "1.2.3.4", now });
-    await claim(deps, { code, client: "1.2.3.4", now });
+    await claim(deps, { code, client: "1.2.3.4", device: null, now });
+    await claim(deps, { code, client: "1.2.3.4", device: null, now });
 
-    expect(await claim(deps, { code, client: "1.2.3.4", now })).toEqual({ status: "rate-limited" });
+    expect(await claim(deps, { code, client: "1.2.3.4", device: null, now })).toEqual({
+      status: "rate-limited",
+    });
   });
 
   it("counts a malformed guess against the limit too", async () => {
     const deps = { store: store(), limiter: createRateLimiter({ limit: 1, windowMs: 60_000 }) };
-    await claim(deps, { code: "nope", client: "1.2.3.4", now });
+    await claim(deps, { code: "nope", client: "1.2.3.4", device: null, now });
 
-    expect(await claim(deps, { code, client: "1.2.3.4", now })).toEqual({ status: "rate-limited" });
+    expect(await claim(deps, { code, client: "1.2.3.4", device: null, now })).toEqual({
+      status: "rate-limited",
+    });
   });
 });
 

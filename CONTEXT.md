@@ -65,3 +65,7 @@ _Avoid_: Session, account, user, subscription
 **Admin**:
 The operator of the SDR and the app. Sees every Meter, issues and rotates Claim Codes, and revokes Grants.
 _Avoid_: Owner, superuser
+
+**Admin Password**:
+The one secret that reaches the Admin surface, held only by the Admin. Never a Claim Code, and it names no Meter.
+_Avoid_: Admin code, admin account, admin login

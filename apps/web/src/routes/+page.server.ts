@@ -1,7 +1,7 @@
 import { fail, redirect } from "@sveltejs/kit";
 import { claim } from "$lib/server/access.js";
 import { prismaAccessStore } from "$lib/server/access-store.js";
-import { grantSecret } from "$lib/server/config.js";
+import { cookieSecret } from "$lib/server/config.js";
 import { prisma } from "$lib/server/db.js";
 import { GRANT_COOKIE, GRANT_COOKIE_OPTIONS, signGrantId } from "$lib/server/grant-cookie.js";
 import { createRateLimiter } from "$lib/server/rate-limit.js";
@@ -23,7 +23,12 @@ export const actions: Actions = {
 
     const result = await claim(
       { store: prismaAccessStore(prisma()), limiter },
-      { code, client: getClientAddress(), now: new Date() },
+      {
+        code,
+        client: getClientAddress(),
+        device: request.headers.get("user-agent"),
+        now: new Date(),
+      },
     );
 
     if (result.status === "rate-limited") {
@@ -31,7 +36,7 @@ export const actions: Actions = {
     }
     if (result.status === "rejected") return fail(400, { error: REJECTED });
 
-    cookies.set(GRANT_COOKIE, signGrantId(result.grantId, grantSecret()), GRANT_COOKIE_OPTIONS);
+    cookies.set(GRANT_COOKIE, signGrantId(result.grantId, cookieSecret()), GRANT_COOKIE_OPTIONS);
     redirect(303, `/meter/${result.meterId}`);
   },
 };

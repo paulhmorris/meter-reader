@@ -76,6 +76,8 @@ model Grant {
   claimCode String?
   claim     ClaimCode? @relation(fields: [claimCode], references: [code], onDelete: SetNull)
   createdAt DateTime   @default(now())
+  /// What the device called itself when it claimed, so the Admin can tell two devices apart.
+  device    String?
   /// Set when the Admin revokes this one device's access.
   revokedAt DateTime?
 
