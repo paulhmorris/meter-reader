@@ -16,7 +16,6 @@
   let { data }: { data: PageData } = $props();
 
   const zone = "America/Chicago";
-  const gallons = new Intl.NumberFormat(undefined, { maximumFractionDigits: 1 });
   const heardAt = new Intl.DateTimeFormat(undefined, {
     dateStyle: "medium",
     timeStyle: "short",
@@ -102,14 +101,6 @@
       hero={{ label: "Today", gallons: data.today }}
       secondary={{ label: "7-day average", gallons: data.weekAverage, hint: "per day" }}
     />
-
-    <p class="text-xs text-muted-foreground">
-      {gallons.format(data.reading.consumption)} gallons since this meter was installed ·
-      {isFresh ? "last heard from" : "last known reading, heard"}
-      {heardAt.format(data.reading.receivedAt)}{data.reading.leakHistory
-        ? ` · days with a leak, as far back as the meter counts: ${data.reading.leakHistory}`
-        : ""}
-    </p>
 
     <section class="space-y-3">
       <nav aria-label="How much to show" class="flex flex-wrap gap-1.5">
