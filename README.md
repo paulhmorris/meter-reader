@@ -47,7 +47,7 @@ Both processes read a single `.env` at the repo root: `apps/web` loads it in `vi
 | `PUBLIC_SENTRY_DSN`         | app          | no       | Browser Sentry DSN. Blank disables reporting.                                  |
 | `PUBLIC_SENTRY_ENVIRONMENT` | app          | no       | Browser Sentry environment name. Defaults to `development`.                    |
 | `ORIGIN`                    | app          | in prod  | Where the app is served, e.g. `https://meter.example.com`. adapter-node rejects form posts from any other origin. |
-| `ADDRESS_HEADER`            | app          | in prod  | Header carrying the client address behind a proxy. `CF-Connecting-IP` behind the tunnel. |
+| `ADDRESS_HEADER`            | app          | in prod  | Header carrying the client address behind a proxy. `CF-Connecting-IP` behind the tunnel; anything else in front must set it too. |
 
 Claim attempts are rate-limited per client address. Behind a reverse proxy, set adapter-node's `ADDRESS_HEADER` (and `XFF_DEPTH`) so the app sees the neighbour's address rather than the proxy's — otherwise every household shares one bucket.
 
@@ -74,7 +74,7 @@ The tunnel is half a dashboard job. In Cloudflare Zero Trust, under Networks →
 | ------------ | --------------------------------------------------------------------------- |
 | `postgres`   | Postgres 17, on the `pgdata` volume. Reachable only from the other services. |
 | `migrate`    | Runs `prisma migrate deploy` and exits. `web` and `ingest` wait for it.      |
-| `web`        | The SvelteKit app on port 3000, published to no host port.                   |
+| `web`        | The SvelteKit app on port 3000, published per `WEB_BIND`.                    |
 | `ingest`     | Subscribes to the broker and stores Readings.                                |
 | `cloudflared`| The tunnel that serves `ORIGIN`.                                         |
 | `prune`      | Thins old Readings. Not started with the others; run nightly (below).        |
@@ -83,7 +83,23 @@ The tunnel is half a dashboard job. In Cloudflare Zero Trust, under Networks →
 
 ### Reaching the app
 
-Only through the tunnel. The app reads the neighbour's address from `CF-Connecting-IP`, which cloudflared sets, and adapter-node **fails the request** if that header is missing — so a claim or an Admin sign-in that somehow bypassed the tunnel is a 500 rather than a household silently sharing everyone else's rate-limit bucket. Nothing publishes a host port, so there is no way round it by default.
+The app reads the client address from `CF-Connecting-IP` and adapter-node **fails the request** if that header is missing — a claim or an Admin sign-in without it is a 500, rather than a household silently sharing everyone else's rate-limit bucket. Anything put in front of the app has to set that header.
+
+Neighbours come through the tunnel, which sets it. `WEB_BIND` decides whether anything else can: left at loopback the app is unreachable from the network, and only the tunnel gets in.
+
+To also reach it from the LAN, give `WEB_BIND` an address a reverse proxy can dial and serve the **same hostname** as `ORIGIN` from split-horizon DNS. One hostname keeps `ORIGIN` single-valued, so form posts and cookies behave the same by either route — two hostnames would mean adapter-node rejecting every form post that did not arrive on the one in `ORIGIN`. In Caddy:
+
+```
+meter.example.com {
+    reverse_proxy 192.168.1.10:3010 {
+        header_up CF-Connecting-IP {remote_host}
+    }
+}
+```
+
+The proxy needs a real certificate, not plain HTTP: the Grant and Admin cookies are `Secure`, so a browser reaching the app over `http://` on a LAN address accepts the page and silently drops the cookie, and a Claim appears to work without sticking.
+
+Bear in mind a LAN route is a second door to `/admin`, held open by `ADMIN_PASSWORD` alone, where the tunnel route has Cloudflare in front of it.
 
 ### Restarting
 

@@ -46,6 +46,10 @@ services:
       PUBLIC_SENTRY_ENVIRONMENT: production
       # cloudflared puts the neighbour's address here; without it every household shares one rate-limit bucket.
       ADDRESS_HEADER: CF-Connecting-IP
+    # Unset, only the tunnel reaches the app. Set it and a LAN reverse proxy can too,
+    # but it must send CF-Connecting-IP or every request through it fails.
+    ports:
+      - "${WEB_BIND:-127.0.0.1:3010}:3000"
     depends_on:
       migrate:
         condition: service_completed_successfully
