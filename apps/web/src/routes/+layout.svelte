@@ -12,6 +12,7 @@
     --bar: canvastext;
     --warning: #b26a00;
     --broken: #b3261e;
+    --rule: color-mix(in srgb, canvastext 20%, transparent);
   }
 
   main {

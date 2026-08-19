@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { meterHealth, parseMeterId } from "./meter.js";
+import { activeLeakLevel, leakHistoryLabel, meterHealth, parseMeterId } from "./meter.js";
 
 const HOUR = 60 * 60 * 1000;
 
@@ -37,5 +37,35 @@ describe("meterHealth", () => {
   it("is broken once three days have passed with nothing heard", () => {
     expect(meterHealth(ago(3 * 24 * HOUR), now)).toBe("broken");
     expect(meterHealth(ago(30 * 24 * HOUR), now)).toBe("broken");
+  });
+});
+
+describe("activeLeakLevel", () => {
+  it("reads the leaknow flag as none, intermittent or continuous", () => {
+    expect(activeLeakLevel(0)).toBe("none");
+    expect(activeLeakLevel(1)).toBe("intermittent");
+    expect(activeLeakLevel(2)).toBe("continuous");
+  });
+
+  it("keeps a flag it does not know as a leak, without naming its kind", () => {
+    expect(activeLeakLevel(3)).toBe("unknown");
+    expect(activeLeakLevel(255)).toBe("unknown");
+  });
+});
+
+describe("leakHistoryLabel", () => {
+  it("names the bucket the meter reports, never a number of days", () => {
+    expect(leakHistoryLabel(0)).toBe("None");
+    expect(leakHistoryLabel(1)).toBe("1–2 days");
+    expect(leakHistoryLabel(2)).toBe("3–7 days");
+    expect(leakHistoryLabel(3)).toBe("8–14 days");
+    expect(leakHistoryLabel(4)).toBe("15–21 days");
+    expect(leakHistoryLabel(5)).toBe("22–34 days");
+    expect(leakHistoryLabel(6)).toBe("35 or more days");
+  });
+
+  it("has no label for a bucket outside the seven the meter can report", () => {
+    expect(leakHistoryLabel(7)).toBeNull();
+    expect(leakHistoryLabel(-1)).toBeNull();
   });
 });

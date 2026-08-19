@@ -16,19 +16,57 @@ export interface MeterReading {
   receivedAt: Date;
 }
 
+/**
+ * The `leaknow` flag: water used in at least 50 of the last 96 quarter-hours, or in every one.
+ * A flag outside those the meter documents still counts as a leak, of a kind we cannot name.
+ */
+export type ActiveLeakLevel = "none" | "intermittent" | "continuous" | "unknown";
+
+export function activeLeakLevel(flag: number): ActiveLeakLevel {
+  if (flag <= 0) return "none";
+  if (flag === 1) return "intermittent";
+  return flag === 2 ? "continuous" : "unknown";
+}
+
+const LEAK_HISTORY_BUCKETS = [
+  "None",
+  "1–2 days",
+  "3–7 days",
+  "8–14 days",
+  "15–21 days",
+  "22–34 days",
+  "35 or more days",
+];
+
+/** The bucket the `leak` field names, or null for one no meter can report, which we would rather not guess at. */
+export function leakHistoryLabel(bucket: number): string | null {
+  return LEAK_HISTORY_BUCKETS[bucket] ?? null;
+}
+
+export interface LatestReading extends MeterReading {
+  activeLeak: ActiveLeakLevel;
+  /** The Leak History bucket's label, or null if the meter reported a bucket it cannot have. */
+  leakHistory: string | null;
+}
+
 /** The Meter's latest Reading, or null while it has never been heard from. */
 export async function latestReading(
   prisma: PrismaClient,
   meterId: bigint,
-): Promise<MeterReading | null> {
+): Promise<LatestReading | null> {
   const reading = await prisma.reading.findFirst({
     where: { meterId },
     orderBy: [{ receivedAt: "desc" }, { id: "desc" }],
-    select: { consumption: true, receivedAt: true },
+    select: { consumption: true, receivedAt: true, activeLeak: true, leakHistory: true },
   });
   if (!reading) return null;
 
-  return { consumption: reading.consumption.toNumber(), receivedAt: reading.receivedAt };
+  return {
+    consumption: reading.consumption.toNumber(),
+    receivedAt: reading.receivedAt,
+    activeLeak: activeLeakLevel(reading.activeLeak),
+    leakHistory: leakHistoryLabel(reading.leakHistory),
+  };
 }
 
 export type MeterHealth = "fresh" | "stale" | "broken";

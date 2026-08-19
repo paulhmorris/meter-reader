@@ -66,6 +66,22 @@
 <h1>Meter {data.meterId}</h1>
 
 {#if data.reading}
+  {#if data.reading.activeLeak !== "none"}
+    <p class="warning active-leak">
+      <strong>
+        This meter {isFresh ? "is" : "was, when we last heard it,"} reporting a leak.
+      </strong>
+      {#if data.reading.activeLeak === "continuous"}
+        Water ran through it without a break for a whole day. That usually means something is stuck
+        open — a running toilet, a valve that has not closed, or a burst pipe.
+      {:else if data.reading.activeLeak === "intermittent"}
+        Water ran through it in at least half of the day, in short bursts. That usually means
+        something is dripping or a toilet is refilling on its own.
+      {/if}
+      It is worth checking, and worth calling a plumber if you cannot find it.
+    </p>
+  {/if}
+
   {#if data.health === "broken"}
     <p class="warning broken">
       We have not picked up this meter for more than three days. Our receiver is most likely down,
@@ -84,6 +100,12 @@
     {heardAt.format(data.reading.receivedAt)}
   </p>
 
+  {#if data.reading.leakHistory}
+    <p class="muted">
+      Days with a leak, as far back as the meter counts: {data.reading.leakHistory}
+    </p>
+  {/if}
+
   <h2>Today, by hour</h2>
   <p class="muted">
     {gallons.format(today)} gallons{isFresh ? " so far" : " on the last readings we have"}
@@ -95,6 +117,26 @@
     <p class="muted">Up to when we last heard from the meter, not to now</p>
   {/if}
   {@render chart(daily)}
+
+  <h2>What the meter has reported</h2>
+  {#if data.events.length > 0}
+    <ol class="events">
+      {#each data.events as event (event.id)}
+        <li>
+          <span>{event.description}</span>
+          <span class="muted">{heardAt.format(event.occurredAt)}</span>
+        </li>
+      {/each}
+    </ol>
+    {#if data.older}
+      <p class="muted">Older changes than these are kept, but not shown here.</p>
+    {/if}
+  {:else}
+    <p class="muted">
+      Nothing has changed since we started listening — no leaks, no backwards flow, no days without
+      water.
+    </p>
+  {/if}
 {:else}
   <p class="warning">
     We have not picked up this meter at all yet. Until our receiver hears it, there is nothing to
@@ -115,8 +157,27 @@
     line-height: 1.4;
   }
 
-  .broken {
+  .broken,
+  .active-leak {
     border-left-color: var(--broken);
+  }
+
+  .events {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    font-size: 0.875rem;
+  }
+
+  .events li {
+    display: flex;
+    flex-direction: column;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .events .muted {
+    font-size: 0.75rem;
   }
 
   .consumption span {

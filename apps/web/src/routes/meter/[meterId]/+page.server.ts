@@ -1,5 +1,6 @@
 import { error } from "@sveltejs/kit";
 import { prisma } from "$lib/server/db.js";
+import { recentEvents } from "$lib/server/events.js";
 import { latestReading, meterHealth, parseMeterId } from "$lib/server/meter.js";
 import { daysBefore } from "$lib/server/periods.js";
 import { usageByPeriod } from "$lib/server/usage.js";
@@ -7,6 +8,7 @@ import { prismaUsageStore } from "$lib/server/usage-store.js";
 import type { PageServerLoad } from "./$types.js";
 
 const DAYS_SHOWN = 30;
+const EVENTS_SHOWN = 50;
 
 export const load: PageServerLoad = async ({ params, locals }) => {
   const meterId = parseMeterId(params.meterId);
@@ -16,8 +18,9 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 
   const now = new Date();
   const usage = { store: prismaUsageStore(prisma()) };
-  const [reading, hourly, daily] = await Promise.all([
+  const [reading, meterEvents, hourly, daily] = await Promise.all([
     latestReading(prisma(), meterId),
+    recentEvents(prisma(), meterId, EVENTS_SHOWN),
     usageByPeriod(usage, {
       meterId,
       granularity: "hour",
@@ -34,5 +37,5 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 
   const health = reading ? meterHealth(reading.receivedAt, now) : null;
 
-  return { meterId: String(meterId), reading, health, hourly, daily };
+  return { meterId: String(meterId), reading, health, ...meterEvents, hourly, daily };
 };
