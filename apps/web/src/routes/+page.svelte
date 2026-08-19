@@ -1,8 +1,8 @@
 <script lang="ts">
   import { enhance } from "$app/forms";
-  import type { ActionData, PageData } from "./$types.js";
+  import type { ActionData } from "./$types.js";
 
-  let { data, form }: { data: PageData; form: ActionData } = $props();
+  let { form }: { form: ActionData } = $props();
 </script>
 
 <svelte:head><title>Meter Reader</title></svelte:head>
@@ -26,10 +26,6 @@
 
 {#if form?.error}
   <p class="error" role="alert">{form.error}</p>
-{/if}
-
-{#if data.meterId}
-  <p><a href="/meter/{data.meterId}">Go to your meter</a></p>
 {/if}
 
 <style>

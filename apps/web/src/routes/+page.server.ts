@@ -13,7 +13,7 @@ const limiter = createRateLimiter({ limit: 10, windowMs: 60_000 });
 const REJECTED = "That code was not recognised.";
 
 export const load: PageServerLoad = ({ locals }) => {
-  return { meterId: locals.grant ? String(locals.grant.meterId) : null };
+  if (locals.grant) redirect(303, `/meter/${locals.grant.meterId}`);
 };
 
 export const actions: Actions = {
