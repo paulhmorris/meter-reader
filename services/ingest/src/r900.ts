@@ -1,3 +1,5 @@
+import * as v from "valibot";
+
 /** The flags a Meter reports alongside its counter, each a small bucketed code. */
 export interface R900Flags {
   /** `leaknow`: 0 none, 1 intermittent, 2 continuous — a rolling 24-hour assessment. */
@@ -21,43 +23,39 @@ const R900_MODEL = "Neptune-R900";
 const MAX_METER_ID = 0xffffffff;
 const MAX_FLAG = 0xff;
 
-function isMeterId(value: unknown): value is number {
-  return Number.isSafeInteger(value) && (value as number) >= 0 && (value as number) <= MAX_METER_ID;
-}
+const count = v.pipe(v.number(), v.safeInteger(), v.minValue(0));
+const flag = v.pipe(count, v.maxValue(MAX_FLAG));
 
-function isCounter(value: unknown): value is number {
-  return Number.isSafeInteger(value) && (value as number) >= 0;
-}
-
-function isFlag(value: unknown): value is number {
-  return Number.isSafeInteger(value) && (value as number) >= 0 && (value as number) <= MAX_FLAG;
-}
+/** rtl_433 sends more fields than a Reading needs, so unknown keys are left alone. */
+const transmission = v.pipe(
+  v.object({
+    model: v.literal(R900_MODEL),
+    id: v.pipe(count, v.maxValue(MAX_METER_ID)),
+    consumption: count,
+    leaknow: flag,
+    leak: flag,
+    backflow: flag,
+    nouse: flag,
+  }),
+  v.transform(({ id, consumption, leaknow, leak, backflow, nouse }): R900Reading => ({
+    meterId: BigInt(id),
+    consumption: (consumption / 10).toFixed(1),
+    flags: { activeLeak: leaknow, leakHistory: leak, backflow, noUse: nouse },
+  })),
+);
 
 /**
  * Decodes one rtl_433 MQTT payload into a Reading, or null for anything this service
  * has no business storing. The R900 counter's last digit is tenths (ADR-0002).
  */
 export function parseR900(payload: Buffer): R900Reading | null {
-  let transmission: unknown;
+  let json: unknown;
   try {
-    transmission = JSON.parse(payload.toString());
+    json = JSON.parse(payload.toString());
   } catch {
     return null;
   }
 
-  if (typeof transmission !== "object" || transmission === null) return null;
-  const { model, id, consumption, leaknow, leak, backflow, nouse } = transmission as Record<
-    string,
-    unknown
-  >;
-
-  if (model !== R900_MODEL) return null;
-  if (!isMeterId(id) || !isCounter(consumption)) return null;
-  if (!isFlag(leaknow) || !isFlag(leak) || !isFlag(backflow) || !isFlag(nouse)) return null;
-
-  return {
-    meterId: BigInt(id),
-    consumption: (consumption / 10).toFixed(1),
-    flags: { activeLeak: leaknow, leakHistory: leak, backflow, noUse: nouse },
-  };
+  const result = v.safeParse(transmission, json);
+  return result.success ? result.output : null;
 }
