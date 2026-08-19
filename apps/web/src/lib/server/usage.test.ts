@@ -227,6 +227,62 @@ describe("usageByPeriod", () => {
     expect(day).toMatchObject({ gallons: 80, partial: false });
   });
 
+  it("still trusts a weekly boundary once pruning has thinned Readings to one a day", async () => {
+    const pruned = store([
+      ["2026-08-17T04:45:00Z", 1000],
+      ["2026-08-24T04:45:00Z", 1400],
+    ]);
+    const [week] = await usageByPeriod(
+      { store: pruned },
+      {
+        meterId,
+        granularity: "week",
+        from: new Date("2026-08-19T12:00:00Z"),
+        to: new Date("2026-08-26T12:00:00Z"),
+      },
+    );
+
+    expect(week.start.toISOString()).toBe("2026-08-17T05:00:00.000Z");
+    expect(week).toMatchObject({ gallons: 400, partial: false });
+  });
+
+  it("still trusts a monthly boundary once pruning has thinned Readings to one a day", async () => {
+    const pruned = store([
+      ["2026-07-01T04:50:00Z", 1000],
+      ["2026-08-01T04:50:00Z", 2600],
+    ]);
+    const [month] = await usageByPeriod(
+      { store: pruned },
+      {
+        meterId,
+        granularity: "month",
+        from: new Date("2026-07-15T12:00:00Z"),
+        to: new Date("2026-08-15T12:00:00Z"),
+      },
+    );
+
+    expect(month).toMatchObject({ gallons: 1600, partial: false });
+  });
+
+  it("marks a month Partial once only one Reading a week survives around its boundaries", async () => {
+    const weekly = store([
+      ["2025-06-29T04:50:00Z", 1000],
+      ["2025-07-06T04:50:00Z", 1400],
+      ["2025-08-03T04:50:00Z", 3000],
+    ]);
+    const [month] = await usageByPeriod(
+      { store: weekly },
+      {
+        meterId,
+        granularity: "month",
+        from: new Date("2025-07-15T12:00:00Z"),
+        to: new Date("2026-08-19T12:00:00Z"),
+      },
+    );
+
+    expect(month).toMatchObject({ gallons: 400, partial: true });
+  });
+
   it("asks the store for each boundary once", async () => {
     const instants: Date[][] = [];
     const counting: UsageStore = {

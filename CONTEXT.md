@@ -35,7 +35,7 @@ A recorded transition of one of the Meter's flags — Active Leak, backflow or n
 _Avoid_: Alert, notification, log
 
 **Partial**:
-Describes a period whose Usage is understated or overstated because Readings are missing near its boundaries.
+Describes a period whose Usage is understated or overstated because Readings are missing near its boundaries. Only the boundaries matter, at every width: an hour, a day, a Monday-to-Monday week or a calendar month whose opening and closing Readings are close enough to it is exact, however little was heard in between.
 _Avoid_: Incomplete, gap, estimated
 
 ### Leaks

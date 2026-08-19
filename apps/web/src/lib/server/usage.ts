@@ -20,10 +20,18 @@ export interface UsagePeriod {
  * a Heartbeat plus slack for hours, since a Heartbeat is forced once 15 minutes have *elapsed* and
  * so lands a transmission or two late; an hour for days, since pruning thins Readings to one an
  * hour past a week old and a day of Usage survives that intact (ADR-0003).
+ *
+ * Weeks and months take the daily tolerance, because their boundaries are Chicago midnights too
+ * and every tier pruning leaves behind keeps the last Reading of a bucket: one an hour to 60 days,
+ * one a Chicago day to a year, both of which land a Heartbeat or so before a midnight. Past a year
+ * only one Reading a Monday week survives, which a week boundary is but the first of a month is
+ * not — so months that old read Partial, which is what they are.
  */
 const STALE_AFTER_MS: Record<Granularity, number> = {
   hour: 20 * 60 * 1000,
   day: 60 * 60 * 1000,
+  week: 60 * 60 * 1000,
+  month: 60 * 60 * 1000,
 };
 
 function trusted(

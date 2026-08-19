@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { daysBefore, periods } from "./periods.js";
+import { daysBefore, monthsBefore, periods } from "./periods.js";
 
 /** Chicago springs forward on 2026-03-08 and falls back on 2026-11-01. */
 const springForward = new Date("2026-03-08T12:00:00Z");
@@ -81,6 +81,66 @@ describe("hourly periods", () => {
       "2026-11-01T06:00:00.000Z",
       "2026-11-01T07:00:00.000Z",
     ]);
+  });
+});
+
+describe("weekly periods", () => {
+  it("starts each week on the Chicago Monday, the bucket pruning keeps beyond a year", () => {
+    const [week] = periods("week", {
+      from: new Date("2026-08-19T18:00:00Z"),
+      to: new Date("2026-08-19T18:00:00Z"),
+    });
+
+    expect(week.start.toISOString()).toBe("2026-08-17T05:00:00.000Z");
+    expect(week.end.toISOString()).toBe("2026-08-24T05:00:00.000Z");
+  });
+
+  it("keeps its boundaries at midnight across a change of offset", () => {
+    const weeks = periods("week", {
+      from: new Date("2026-10-30T18:00:00Z"),
+      to: new Date("2026-11-05T18:00:00Z"),
+    });
+
+    expect(weeks.map((week) => week.start.toISOString())).toEqual([
+      "2026-10-26T05:00:00.000Z",
+      "2026-11-02T06:00:00.000Z",
+    ]);
+  });
+});
+
+describe("monthly periods", () => {
+  it("runs from the first of the Chicago month to the first of the next", () => {
+    const [month] = periods("month", {
+      from: new Date("2026-08-19T18:00:00Z"),
+      to: new Date("2026-08-19T18:00:00Z"),
+    });
+
+    expect(month.start.toISOString()).toBe("2026-08-01T05:00:00.000Z");
+    expect(month.end.toISOString()).toBe("2026-09-01T05:00:00.000Z");
+  });
+
+  it("covers short months and a year boundary", () => {
+    const months = periods("month", {
+      from: new Date("2027-01-15T18:00:00Z"),
+      to: new Date("2027-03-15T18:00:00Z"),
+    });
+
+    expect(months.map((month) => month.start.toISOString())).toEqual([
+      "2027-01-01T06:00:00.000Z",
+      "2027-02-01T06:00:00.000Z",
+      "2027-03-01T06:00:00.000Z",
+    ]);
+  });
+});
+
+describe("monthsBefore", () => {
+  it("counts whole Chicago months back, across a year boundary", () => {
+    expect(monthsBefore(new Date("2026-08-19T18:00:00Z"), 11).toISOString()).toBe(
+      "2025-09-01T05:00:00.000Z",
+    );
+    expect(monthsBefore(new Date("2026-08-19T18:00:00Z"), 0).toISOString()).toBe(
+      "2026-08-01T05:00:00.000Z",
+    );
   });
 });
 

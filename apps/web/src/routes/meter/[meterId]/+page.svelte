@@ -1,10 +1,14 @@
 <script lang="ts">
+  import { page } from "$app/state";
+  import { windowName } from "$lib/chart-format.js";
   import EventTimeline from "$lib/components/EventTimeline.svelte";
   import LeakBanner from "$lib/components/LeakBanner.svelte";
   import MeterHealthBadge from "$lib/components/MeterHealthBadge.svelte";
   import StatCard from "$lib/components/StatCard.svelte";
   import UsageChart, { type ChartPeriod } from "$lib/components/UsageChart.svelte";
+  import type { Granularity } from "$lib/granularity.js";
   import LeakWarnings from "$lib/LeakWarnings.svelte";
+  import type { Preset, View } from "$lib/server/ranges.js";
   import type { PageData } from "./$types.js";
 
   let { data }: { data: PageData } = $props();
@@ -16,31 +20,52 @@
     timeStyle: "short",
     timeZone: zone,
   });
-  const hourLabel = new Intl.DateTimeFormat(undefined, { hour: "numeric", timeZone: zone });
-  const dayLabel = new Intl.DateTimeFormat(undefined, {
-    month: "numeric",
-    day: "numeric",
-    timeZone: zone,
-  });
-  const dayName = new Intl.DateTimeFormat(undefined, {
-    weekday: "long",
-    month: "long",
-    day: "numeric",
-    timeZone: zone,
-  });
+
+  const PRESET_NAMES: Record<Preset, string> = {
+    today: "Today",
+    "7d": "7 days",
+    "30d": "30 days",
+    "12mo": "12 months",
+  };
+
+  /** What the heading calls a preset, where there is room for more than a button holds. */
+  const PRESET_STRETCHES: Record<Preset, string> = {
+    today: "Today",
+    "7d": "The last 7 days",
+    "30d": "The last 30 days",
+    "12mo": "The last 12 months",
+  };
+
+  const BY: Record<Granularity, string> = {
+    hour: "by the hour",
+    day: "by day",
+    week: "by week",
+    month: "by month",
+  };
 
   const isFresh = $derived(data.health === "fresh");
+  const range = $derived(data.range);
 
-  // What today's chart adds up to. The day's own bar can read lower, since a day whose opening
-  // Reading is missing accounts for none of the water used before the first one we have.
-  const today = $derived(data.hourly.reduce((total, hour) => total + hour.gallons, 0));
-  const todayPartial = $derived(data.hourly.some((hour) => hour.partial));
+  /** The stretch the chart is on: the preset itself, or the window a drill-down opened. */
+  const stretch = $derived(
+    range.drilled ? windowName(range.granularity, range.from) : PRESET_STRETCHES[range.preset],
+  );
 
-  /** The seven whole days behind today — today is still in progress and would drag it down. */
-  const weekAverage = $derived.by(() => {
-    const week = data.daily.slice(-8, -1);
-    if (week.length === 0) return 0;
-    return week.reduce((total, day) => total + day.gallons, 0) / week.length;
+  function chartHref(preset: Preset, view?: View): string {
+    const params = new URLSearchParams();
+    if (preset !== "today") params.set("range", preset);
+    if (view) {
+      params.set("g", view.granularity);
+      params.set("at", view.at.toISOString());
+    }
+    return params.size === 0 ? page.url.pathname : `${page.url.pathname}?${params}`;
+  }
+
+  const drillHref = $derived.by(() => {
+    const finer = range.drillTo;
+    if (finer === null) return null;
+    return (period: ChartPeriod) =>
+      chartHref(range.preset, { granularity: finer, at: period.start });
   });
 </script>
 
@@ -74,14 +99,14 @@
     <StatCard
       hero={{
         label: "Today",
-        gallons: today,
-        hint: todayPartial
+        gallons: data.today,
+        hint: data.todayPartial
           ? "so far, on the readings we have"
           : isFresh
             ? "so far"
             : "on the last readings we have",
       }}
-      secondary={{ label: "7-day average", gallons: weekAverage, hint: "per day" }}
+      secondary={{ label: "7-day average", gallons: data.weekAverage, hint: "per day" }}
     />
 
     <p class="text-xs text-muted-foreground">
@@ -93,27 +118,52 @@
     </p>
 
     <section class="space-y-3">
-      <h2 class="text-sm font-medium">Today, by hour</h2>
-      <UsageChart
-        periods={data.hourly}
-        label={(period: ChartPeriod) => hourLabel.format(period.start)}
-        describePeriod={(period: ChartPeriod) =>
-          `${hourLabel.format(period.start)}–${hourLabel.format(period.end)}`}
-      />
-    </section>
+      <nav aria-label="How much to show" class="flex flex-wrap gap-1.5">
+        {#each Object.entries(PRESET_NAMES) as [preset, name] (preset)}
+          {@const chosen = preset === range.preset && !range.drilled}
+          <a
+            href={chartHref(preset as Preset)}
+            aria-current={chosen ? "page" : undefined}
+            class="rounded-md border px-2.5 py-1 text-xs font-medium transition-colors {chosen
+              ? 'border-transparent bg-primary text-primary-foreground'
+              : 'border-border hover:bg-accent'}"
+          >
+            {name}
+          </a>
+        {/each}
+      </nav>
 
-    <section class="space-y-3">
-      <h2 class="text-sm font-medium">Last {data.daily.length} days</h2>
+      {#if range.drilled}
+        <nav aria-label="Where you are" class="flex flex-wrap items-center gap-1.5 text-xs">
+          <a class="text-muted-foreground hover:underline" href={chartHref(range.preset)}>
+            {PRESET_NAMES[range.preset]}
+          </a>
+          {#each range.trail as view (view.granularity)}
+            <span aria-hidden="true" class="text-muted-foreground">›</span>
+            <a class="text-muted-foreground hover:underline" href={chartHref(range.preset, view)}>
+              {windowName(view.granularity, view.at)}
+            </a>
+          {/each}
+          <span aria-hidden="true" class="text-muted-foreground">›</span>
+          <span>{stretch}</span>
+        </nav>
+      {/if}
+
+      <h2 class="text-sm font-medium">{stretch}, {BY[range.granularity]}</h2>
+
+      {#if range.granularity === "week"}
+        <p class="text-xs text-muted-foreground">
+          Weeks run Monday to Monday, so the first and last reach either side of the month
+        </p>
+      {/if}
+
       {#if !isFresh}
         <p class="text-xs text-muted-foreground">
           Up to when we last heard from the meter, not to now
         </p>
       {/if}
-      <UsageChart
-        periods={data.daily}
-        label={(period: ChartPeriod) => dayLabel.format(period.start)}
-        describePeriod={(period: ChartPeriod) => dayName.format(period.start)}
-      />
+
+      <UsageChart periods={data.chart} granularity={range.granularity} {drillHref} />
     </section>
 
     <section class="space-y-3">
