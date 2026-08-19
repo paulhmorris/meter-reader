@@ -4,18 +4,6 @@
   let { children } = $props();
 </script>
 
-<main>
+<main class="mx-auto w-full max-w-2xl px-4 py-8 sm:py-12">
   {@render children()}
 </main>
-
-<style>
-  main {
-    max-width: 24rem;
-    margin: 4rem auto;
-    padding: 0 1rem;
-  }
-
-  :global(.muted) {
-    color: var(--muted-foreground);
-  }
-</style>

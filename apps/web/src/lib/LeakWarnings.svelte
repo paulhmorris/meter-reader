@@ -1,5 +1,9 @@
 <script lang="ts">
   import { dev } from "$app/environment";
+  import { Button } from "$lib/components/ui/button/index.js";
+  import { Card } from "$lib/components/ui/card/index.js";
+  import Bell from "@lucide/svelte/icons/bell";
+  import BellOff from "@lucide/svelte/icons/bell-off";
   import { onMount } from "svelte";
 
   let { meterId, publicKey }: { meterId: string; publicKey: string } = $props();
@@ -131,45 +135,43 @@
   }
 </script>
 
-<h2>Leak warnings</h2>
-
-{#if warnings === "unsupported"}
-  <p class="muted">This browser cannot show leak warnings.</p>
-{:else if warnings === "blocked"}
-  <p class="muted">
-    This browser is blocking notifications from us. Allow them in its site settings to get leak
-    warnings.
-  </p>
-{:else}
-  <p class="muted">
+<Card class="gap-3 p-5">
+  <div class="flex items-center gap-2">
     {#if warnings === "on"}
-      This device is warned when the meter starts reporting a leak, even with the page closed.
+      <Bell class="size-4 text-primary" aria-hidden="true" />
     {:else}
-      Get a warning on this device when the meter starts reporting a leak, even with the page
-      closed. Nothing else is sent.
+      <BellOff class="size-4 text-muted-foreground" aria-hidden="true" />
     {/if}
-  </p>
-  <button onclick={attempt(warnings === "on" ? turnOff : turnOn)} disabled={warnings === "working"}>
-    {warnings === "on" ? "Turn off leak warnings" : "Turn on leak warnings"}
-  </button>
-{/if}
+    <h2 class="text-sm font-medium">Leak warnings</h2>
+  </div>
 
-{#if failure}
-  <p class="warning">{failure}</p>
-{/if}
+  {#if warnings === "unsupported"}
+    <p class="text-sm text-muted-foreground">This browser cannot show leak warnings.</p>
+  {:else if warnings === "blocked"}
+    <p class="text-sm text-muted-foreground">
+      This browser is blocking notifications from us. Allow them in its site settings to get leak
+      warnings.
+    </p>
+  {:else}
+    <p class="text-sm leading-relaxed text-muted-foreground">
+      {#if warnings === "on"}
+        This device is warned when the meter starts reporting a leak, even with the page closed.
+      {:else}
+        Get a warning on this device when the meter starts reporting a leak, even with the page
+        closed. Nothing else is sent.
+      {/if}
+    </p>
+    <Button
+      variant={warnings === "on" ? "outline" : "default"}
+      class="w-fit"
+      onclick={attempt(warnings === "on" ? turnOff : turnOn)}
+      disabled={warnings === "working"}
+    >
+      {warnings === "on" ? "Turn off leak warnings" : "Turn on leak warnings"}
+    </Button>
+  {/if}
 
-<style>
-  button {
-    font: inherit;
-    padding: 0.5rem 0.75rem;
-    border: 1px solid var(--border);
-    border-radius: 4px;
-    background: none;
-    color: inherit;
-  }
-
-  .warning {
-    font-size: 0.875rem;
-    color: var(--danger);
-  }
-</style>
+  {#if failure}
+    <p class="text-sm text-danger">{failure}</p>
+  {/if}
+</Card>

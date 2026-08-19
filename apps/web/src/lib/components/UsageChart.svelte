@@ -1,0 +1,148 @@
+<script lang="ts" module>
+  export interface ChartPeriod {
+    start: Date;
+    end: Date;
+    gallons: number;
+    partial: boolean;
+    leaking: boolean;
+  }
+</script>
+
+<script lang="ts">
+  import { BarChart, Bars, Tooltip } from "layerchart";
+
+  let {
+    periods,
+    label,
+    describePeriod,
+    height = "h-56",
+  }: {
+    periods: ChartPeriod[];
+    /** Formats a period's start for the axis and the tooltip. */
+    label: (period: ChartPeriod) => string;
+    /** What the tooltip calls the period, e.g. "3 PM–4 PM". */
+    describePeriod: (period: ChartPeriod) => string;
+    height?: string;
+  } = $props();
+
+  const gallons = new Intl.NumberFormat(undefined, { maximumFractionDigits: 1 });
+
+  const plain = $derived(periods.filter((period) => !period.leaking));
+  const leaking = $derived(periods.filter((period) => period.leaking));
+  const partial = $derived(periods.filter((period) => period.partial));
+  const anyPartial = $derived(partial.length > 0);
+  const anyLeaking = $derived(leaking.length > 0);
+
+  /** Bars land in the same bands whichever subset they come from, so tone can be a layer per tone. */
+  const layer = {
+    radius: 3,
+    rounded: "top",
+    motion: "tween",
+    initialHeight: 0,
+    tooltip: true,
+  } as const;
+</script>
+
+<figure class="m-0">
+  <div class={height}>
+    <BarChart
+      data={periods}
+      x="start"
+      y="gallons"
+      bandPadding={0.25}
+      grid={{ y: true, x: false }}
+      rule={false}
+      props={{
+        xAxis: {
+          format: (value: Date) => label({ start: value } as ChartPeriod),
+          tickLength: 0,
+          ticks: 6,
+        },
+        yAxis: { format: (value: number) => gallons.format(value), tickLength: 0, ticks: 4 },
+        grid: { class: "stroke-chart-grid" },
+        highlight: { area: { class: "fill-foreground/5" } },
+      }}
+    >
+      {#snippet marks()}
+        <defs>
+          <pattern
+            id="usage-partial"
+            width="5"
+            height="5"
+            patternUnits="userSpaceOnUse"
+            patternTransform="rotate(45)"
+          >
+            <rect width="5" height="5" class="fill-background" />
+            <line y2="5" class="stroke-foreground/45" stroke-width="2.5" />
+          </pattern>
+        </defs>
+
+        <Bars data={plain} {...layer} class="fill-chart-usage" />
+        <Bars data={leaking} {...layer} class="fill-chart-leak" />
+        <!-- Drawn over whichever tone is beneath, so a Partial period reads as partial either way. -->
+        <Bars data={partial} {...layer} fill="url(#usage-partial)" fillOpacity={0.55} />
+      {/snippet}
+
+      {#snippet tooltip({ context }: { context: any })}
+        <Tooltip.Root {context} class="border border-border bg-popover text-popover-foreground">
+          {#snippet children({ data }: { data: ChartPeriod })}
+            <div class="px-3 py-2">
+              <p class="text-xs text-muted-foreground">{describePeriod(data)}</p>
+              <p class="text-base font-semibold tabular-nums">
+                {gallons.format(data.gallons)}
+                <span class="text-xs font-normal text-muted-foreground">gal</span>
+              </p>
+              {#if data.leaking}
+                <p class="mt-1 text-xs text-danger">The meter reported a leak during this time</p>
+              {/if}
+              {#if data.partial}
+                <p class="mt-1 max-w-52 text-xs text-muted-foreground">
+                  Readings are missing around then, so this is too low or too high
+                </p>
+              {/if}
+            </div>
+          {/snippet}
+        </Tooltip.Root>
+      {/snippet}
+    </BarChart>
+  </div>
+
+  {#if anyPartial || anyLeaking}
+    <figcaption class="mt-3 space-y-1.5 text-xs text-muted-foreground">
+      {#if anyLeaking}
+        <p class="flex items-start gap-2">
+          <span class="mt-0.5 size-3 shrink-0 rounded-sm bg-chart-leak" aria-hidden="true"></span>
+          The meter was reporting a leak during these.
+        </p>
+      {/if}
+      {#if anyPartial}
+        <p class="flex items-start gap-2">
+          <span
+            class="border-foreground/30 mt-0.5 size-3 shrink-0 rounded-sm border"
+            style="background: repeating-linear-gradient(45deg, currentColor 0 2px, transparent 2px 5px)"
+            aria-hidden="true"
+          ></span>
+          The meter went unheard from around these times, so the water shown is too low or too high. It
+          is what the readings we do have add up to — we would rather show that than guess.
+        </p>
+      {/if}
+    </figcaption>
+  {/if}
+
+  <table class="sr-only">
+    <caption>Water used per period</caption>
+    <thead><tr><th scope="col">Period</th><th scope="col">Gallons</th></tr></thead>
+    <tbody>
+      {#each periods as period (period.start.getTime())}
+        <tr>
+          <th scope="row">{describePeriod(period)}</th>
+          <td>
+            {gallons.format(period.gallons)}
+            {period.partial ? " (partial — the meter went unheard from around then)" : ""}
+            {period.leaking ? " (the meter was reporting a leak)" : ""}
+          </td>
+        </tr>
+      {/each}
+    </tbody>
+  </table>
+</figure>
