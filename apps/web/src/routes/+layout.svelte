@@ -10,6 +10,8 @@
   :global(:root) {
     --muted: #555;
     --bar: canvastext;
+    --warning: #b26a00;
+    --broken: #b3261e;
   }
 
   main {

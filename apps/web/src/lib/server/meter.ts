@@ -30,3 +30,16 @@ export async function latestReading(
 
   return { consumption: reading.consumption.toNumber(), receivedAt: reading.receivedAt };
 }
+
+export type MeterHealth = "fresh" | "stale" | "broken";
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+const UNHEARD_BEFORE_STALE_MS = DAY_MS;
+const UNHEARD_BEFORE_BROKEN_MS = 3 * DAY_MS;
+
+/** Stale once a day has passed unheard from, broken once three have (CONTEXT.md: Stale). */
+export function meterHealth(lastHeardAt: Date, now: Date): MeterHealth {
+  const unheardForMs = now.getTime() - lastHeardAt.getTime();
+  if (unheardForMs >= UNHEARD_BEFORE_BROKEN_MS) return "broken";
+  return unheardForMs >= UNHEARD_BEFORE_STALE_MS ? "stale" : "fresh";
+}

@@ -1,6 +1,6 @@
 import { error } from "@sveltejs/kit";
 import { prisma } from "$lib/server/db.js";
-import { latestReading, parseMeterId } from "$lib/server/meter.js";
+import { latestReading, meterHealth, parseMeterId } from "$lib/server/meter.js";
 import { daysBefore } from "$lib/server/periods.js";
 import { usageByPeriod } from "$lib/server/usage.js";
 import { prismaUsageStore } from "$lib/server/usage-store.js";
@@ -32,5 +32,7 @@ export const load: PageServerLoad = async ({ params, locals }) => {
     }),
   ]);
 
-  return { meterId: String(meterId), reading, hourly, daily };
+  const health = reading ? meterHealth(reading.receivedAt, now) : null;
+
+  return { meterId: String(meterId), reading, health, hourly, daily };
 };

@@ -38,6 +38,8 @@
 
   // The last daily period is today, so the total and the day's bar can never disagree.
   const today = $derived(data.daily.at(-1)?.gallons ?? 0);
+
+  const isFresh = $derived(data.health === "fresh");
 </script>
 
 {#snippet chart(bars: { period: UsagePeriod; label: string; height: number }[])}
@@ -64,23 +66,57 @@
 <h1>Meter {data.meterId}</h1>
 
 {#if data.reading}
+  {#if data.health === "broken"}
+    <p class="warning broken">
+      We have not picked up this meter for more than three days. Our receiver is most likely down,
+      so nothing here is current — it is where the meter stood when we last heard it.
+    </p>
+  {:else if data.health === "stale"}
+    <p class="warning">
+      We have not picked up this meter for over a day. Our receiver may be down, so the numbers
+      below are the last we heard rather than what the meter reads now.
+    </p>
+  {/if}
+
   <p class="consumption">{gallons.format(data.reading.consumption)} <span>gallons</span></p>
-  <p class="muted">Last heard from {heardAt.format(data.reading.receivedAt)}</p>
+  <p class="muted">
+    {isFresh ? "Last heard from" : "Last known reading, heard"}
+    {heardAt.format(data.reading.receivedAt)}
+  </p>
 
   <h2>Today, by hour</h2>
-  <p class="muted">{gallons.format(today)} gallons so far</p>
+  <p class="muted">
+    {gallons.format(today)} gallons{isFresh ? " so far" : " on the last readings we have"}
+  </p>
   {@render chart(hourly)}
 
   <h2>Last {data.daily.length} days</h2>
+  {#if !isFresh}
+    <p class="muted">Up to when we last heard from the meter, not to now</p>
+  {/if}
   {@render chart(daily)}
 {:else}
-  <p class="muted">This meter has not been heard from yet.</p>
+  <p class="warning">
+    We have not picked up this meter at all yet. Until our receiver hears it, there is nothing to
+    show.
+  </p>
 {/if}
 
 <style>
   .consumption {
     font-size: 2.5rem;
     margin: 0;
+  }
+
+  .warning {
+    border-left: 3px solid var(--warning);
+    padding-left: 0.75rem;
+    font-size: 0.875rem;
+    line-height: 1.4;
+  }
+
+  .broken {
+    border-left-color: var(--broken);
   }
 
   .consumption span {

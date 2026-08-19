@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { parseMeterId } from "./meter.js";
+import { meterHealth, parseMeterId } from "./meter.js";
+
+const HOUR = 60 * 60 * 1000;
 
 describe("parseMeterId", () => {
   it("reads the 32-bit id from the transmission", () => {
@@ -15,5 +17,25 @@ describe("parseMeterId", () => {
     expect(parseMeterId("01")).toBeNull();
     expect(parseMeterId("abc")).toBeNull();
     expect(parseMeterId("")).toBeNull();
+  });
+});
+
+describe("meterHealth", () => {
+  const now = new Date("2026-08-19T12:00:00Z");
+  const ago = (ms: number) => new Date(now.getTime() - ms);
+
+  it("is fresh while the Meter has been heard from within a day", () => {
+    expect(meterHealth(ago(23 * HOUR), now)).toBe("fresh");
+    expect(meterHealth(ago(24 * HOUR - 1), now)).toBe("fresh");
+  });
+
+  it("is stale once a day has passed with nothing heard", () => {
+    expect(meterHealth(ago(24 * HOUR), now)).toBe("stale");
+    expect(meterHealth(ago(3 * 24 * HOUR - 1), now)).toBe("stale");
+  });
+
+  it("is broken once three days have passed with nothing heard", () => {
+    expect(meterHealth(ago(3 * 24 * HOUR), now)).toBe("broken");
+    expect(meterHealth(ago(30 * 24 * HOUR), now)).toBe("broken");
   });
 });
