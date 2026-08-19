@@ -43,7 +43,7 @@ describe("recordReading", () => {
     const store = fakeStore(lastStored());
     const result = await recordReading(store, reading({ consumption: "100.1" }), receivedAt);
 
-    expect(result).toEqual({ status: "stored" });
+    expect(result).toEqual({ status: "stored", events: [] });
     expect(store.saved).toEqual([reading({ consumption: "100.1" })]);
   });
 
@@ -51,7 +51,7 @@ describe("recordReading", () => {
     const store = fakeStore(null);
     const result = await recordReading(store, reading({ consumption: "8.0" }), receivedAt);
 
-    expect(result).toEqual({ status: "stored" });
+    expect(result).toEqual({ status: "stored", events: [] });
     expect(store.saved).toEqual([reading({ consumption: "8.0" })]);
   });
 
@@ -73,18 +73,21 @@ describe("recordReading", () => {
   });
 
   it.each([
-    ["Active Leak", { activeLeak: 1 }],
-    ["Leak History", { leakHistory: 3 }],
-    ["backflow", { backflow: 2 }],
-    ["no-use", { noUse: 5 }],
-  ])("stores a Reading whose %s flag has changed at unchanged Consumption", async (_, flag) => {
-    const store = fakeStore(lastStored());
-    const changed = reading({ flags: { ...quiet, ...flag } });
-    const result = await recordReading(store, changed, minutesAfter(1));
+    ["Active Leak", { activeLeak: 1 }, [{ flag: "activeLeak", from: 0, to: 1 }]],
+    ["Leak History", { leakHistory: 3 }, []],
+    ["backflow", { backflow: 2 }, [{ flag: "backflow", from: 0, to: 2 }]],
+    ["no-use", { noUse: 5 }, [{ flag: "noUse", from: 0, to: 5 }]],
+  ])(
+    "stores a Reading whose %s flag has changed at unchanged Consumption",
+    async (_, flag, events) => {
+      const store = fakeStore(lastStored());
+      const changed = reading({ flags: { ...quiet, ...flag } });
+      const result = await recordReading(store, changed, minutesAfter(1));
 
-    expect(result).toEqual({ status: "stored" });
-    expect(store.saved).toEqual([changed]);
-  });
+      expect(result).toEqual({ status: "stored", events });
+      expect(store.saved).toEqual([changed]);
+    },
+  );
 
   it("suppresses an identical Reading until 15 minutes have passed", async () => {
     const store = fakeStore(lastStored());
@@ -137,6 +140,17 @@ describe("recordReading", () => {
     await recordReading(store, reading({ flags: { ...quiet, [flag]: to } }), minutesAfter(1));
 
     expect(store.events).toEqual([[{ flag, from, to }]]);
+  });
+
+  it("hands back the Meter Events it stored, for whoever has to act on them", async () => {
+    const store = fakeStore(lastStored());
+    const leaking = reading({ flags: { ...quiet, activeLeak: 2 } });
+    const result = await recordReading(store, leaking, minutesAfter(1));
+
+    expect(result).toEqual({
+      status: "stored",
+      events: [{ flag: "activeLeak", from: 0, to: 2 }],
+    });
   });
 
   it("records one Meter Event per flag that moved", async () => {

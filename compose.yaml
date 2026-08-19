@@ -44,6 +44,8 @@ services:
       ADMIN_PASSWORD: ${ADMIN_PASSWORD}
       PUBLIC_SENTRY_DSN: ${PUBLIC_SENTRY_DSN}
       PUBLIC_SENTRY_ENVIRONMENT: production
+      # Only the public half: the app hands it to browsers, ingest signs with the private one.
+      VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY}
       # cloudflared puts the neighbour's address here; without it every household shares one rate-limit bucket.
       ADDRESS_HEADER: CF-Connecting-IP
     # Unset, only the tunnel reaches the app. Set it and a LAN reverse proxy can too,
@@ -74,6 +76,9 @@ services:
       MQTT_TOPIC: ${MQTT_TOPIC}
       MQTT_USERNAME: ${MQTT_USERNAME}
       MQTT_PASSWORD: ${MQTT_PASSWORD}
+      VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY}
+      VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY}
+      VAPID_SUBJECT: ${VAPID_SUBJECT}
     depends_on:
       migrate:
         condition: service_completed_successfully

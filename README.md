@@ -47,11 +47,28 @@ Both processes read a single `.env` at the repo root: `apps/web` loads it in `vi
 | `PUBLIC_SENTRY_DSN`         | app          | no       | Browser Sentry DSN. Blank disables reporting.                                  |
 | `PUBLIC_SENTRY_ENVIRONMENT` | app          | no       | Browser Sentry environment name. Defaults to `development`.                    |
 | `ORIGIN`                    | app          | in prod  | Where the app is served, e.g. `https://meter.example.com`. adapter-node rejects form posts from any other origin. |
+| `VAPID_PUBLIC_KEY`          | app, ingest  | no       | Public half of the VAPID pair browsers subscribe with. Blank and the app offers no leak warnings. |
+| `VAPID_PRIVATE_KEY`         | ingest       | no       | Private half, which signs each push. Blank and nothing is ever pushed.        |
+| `VAPID_SUBJECT`             | ingest       | with keys| Who the push services contact about this app: `mailto:you@example.com`. Ingest refuses to start without it once the keys are set. |
 | `ADDRESS_HEADER`            | app          | in prod  | Header carrying the client address behind a proxy. `CF-Connecting-IP` behind the tunnel; anything else in front must set it too. |
 
 Claim attempts are rate-limited per client address. Behind a reverse proxy, set adapter-node's `ADDRESS_HEADER` (and `XFF_DEPTH`) so the app sees the neighbour's address rather than the proxy's — otherwise every household shares one bucket.
 
 The ingest service refuses to start without `DATABASE_URL` or the `MQTT_*` variables rather than failing on its first query.
+
+## Leak warnings
+
+A neighbour can turn on leak warnings from their meter page. The browser asks for notification permission, and the Push Endpoint it issues is held against their Grant — no accounts, no email addresses, and revoking the Grant silences the device (ADR-0006). When a Meter Event opens an Active Leak, the ingest service pushes every device still holding a Grant for that Meter; backflow, no-use and a leak clearing push nothing. Tapping the warning opens that Meter's page.
+
+Generate the VAPID pair once and keep it:
+
+```sh
+npx web-push generate-vapid-keys
+```
+
+Put the public key in `VAPID_PUBLIC_KEY` for both processes, the private key in `VAPID_PRIVATE_KEY` for ingest, and a contact URL in `VAPID_SUBJECT`. Changing the pair invalidates every device's Push Endpoint, so each has to turn warnings on again. With the keys unset the meter page offers nothing to turn on and ingest logs that it will push nothing — everything else works as before.
+
+Browsers only allow this over HTTPS, which the tunnel provides; a LAN route needs a real certificate for the same reason the cookies do. On iOS the site has to be added to the Home Screen before it can ask for permission at all.
 
 ## Deploying
 

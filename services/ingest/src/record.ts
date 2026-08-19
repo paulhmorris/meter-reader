@@ -28,7 +28,7 @@ export interface ReadingStore {
 }
 
 export type RecordResult =
-  | { status: "stored" }
+  | { status: "stored"; events: MeterEventDraft[] }
   | { status: "heartbeat" }
   | { status: "suppressed" }
   | { status: "rejected"; reading: R900Reading; lastConsumption: string };
@@ -53,9 +53,10 @@ function sameFlags(a: R900Flags, b: R900Flags): boolean {
 }
 
 /**
- * Stores one transmission, unless it says nothing new — an identical one is dropped except as
- * the 15-minute Heartbeat, which is what tells a silent Meter apart from an unused one. Each flag
- * that moved since the Meter's last stored Reading is recorded as a Meter Event alongside it.
+ * Stores one transmission and reports the Meter Events it produced, unless it says nothing new —
+ * an identical one is dropped except as the 15-minute Heartbeat, which is what tells a silent
+ * Meter apart from an unused one. Each flag that moved since the Meter's last stored Reading is
+ * recorded as a Meter Event alongside it.
  *
  * A fallen Consumption means a wrapped counter, a swapped meter, or a corrupt packet, all of
  * which need a human (ADR-0002).
@@ -68,7 +69,7 @@ export async function recordReading(
   const last = await store.lastReading(reading.meterId);
   if (last === null) {
     await store.save(reading, receivedAt, []);
-    return { status: "stored" };
+    return { status: "stored", events: [] };
   }
 
   if (Number(reading.consumption) < Number(last.consumption)) {
@@ -76,8 +77,9 @@ export async function recordReading(
   }
 
   if (reading.consumption !== last.consumption || !sameFlags(reading.flags, last.flags)) {
-    await store.save(reading, receivedAt, transitions(last.flags, reading.flags));
-    return { status: "stored" };
+    const events = transitions(last.flags, reading.flags);
+    await store.save(reading, receivedAt, events);
+    return { status: "stored", events };
   }
 
   if (receivedAt.getTime() - last.receivedAt.getTime() < HEARTBEAT_INTERVAL_MS) {

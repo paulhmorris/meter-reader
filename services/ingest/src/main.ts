@@ -2,11 +2,14 @@ import "./instrument.js";
 
 import * as Sentry from "@sentry/node";
 import type { MqttClient } from "mqtt";
-import { createPrismaClient } from "@meter-reader/db";
+import { createPrismaClient, type PrismaClient } from "@meter-reader/db";
 import { subscribeToBroker } from "./broker.js";
 import { requireEnv } from "./env.js";
 import { handlePayload } from "./pipeline.js";
+import { prismaPushEndpointStore } from "./push-store.js";
 import { prismaReadingStore } from "./store.js";
+import { webPushPusher } from "./web-push.js";
+import type { WarnDeps } from "./warn.js";
 
 requireEnv("DATABASE_URL");
 const broker = {
@@ -16,8 +19,28 @@ const broker = {
   password: requireEnv("MQTT_PASSWORD"),
 };
 
+/** No VAPID keys means no leak warnings: the app still stores every Reading, it just warns nobody. */
+function leakWarnings(prisma: PrismaClient): WarnDeps | null {
+  const publicKey = process.env.VAPID_PUBLIC_KEY;
+  const privateKey = process.env.VAPID_PRIVATE_KEY;
+  if (!publicKey || !privateKey) {
+    console.warn("ingest: VAPID keys unset, leak warnings will not be pushed");
+    return null;
+  }
+
+  return {
+    store: prismaPushEndpointStore(prisma),
+    pusher: webPushPusher({
+      subject: requireEnv("VAPID_SUBJECT"),
+      publicKey,
+      privateKey,
+    }),
+  };
+}
+
 const prisma = createPrismaClient();
 const store = prismaReadingStore(prisma);
+const warn = leakWarnings(prisma);
 let client: MqttClient | undefined;
 let shuttingDown = false;
 
@@ -47,7 +70,7 @@ let queue: Promise<void> = Promise.resolve();
 function enqueue(payload: Buffer): void {
   queue = queue
     .then(async () => {
-      const result = await handlePayload(store, payload, new Date());
+      const result = await handlePayload({ store, warn }, payload, new Date());
       if (result.status !== "rejected") return;
 
       Sentry.captureMessage("ingest: Reading rejected, Consumption fell", {

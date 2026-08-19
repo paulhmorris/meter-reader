@@ -1,4 +1,5 @@
 import { error } from "@sveltejs/kit";
+import { vapidPublicKey } from "$lib/server/config.js";
 import { prisma } from "$lib/server/db.js";
 import { recentEvents } from "$lib/server/events.js";
 import { latestReading, meterHealth, parseMeterId } from "$lib/server/meter.js";
@@ -38,5 +39,8 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 
   const health = reading ? meterHealth(reading.receivedAt, now) : null;
 
-  return { meterId: String(meterId), reading, health, ...meterEvents, hourly, daily };
+  // Only a device holding a Grant can be warned, so the Admin is offered nothing to turn on.
+  const pushKey = locals.grant ? vapidPublicKey() : "";
+
+  return { meterId: String(meterId), reading, health, ...meterEvents, hourly, daily, pushKey };
 };

@@ -1,0 +1,5 @@
+# Leak warnings hang off Grants and are pushed by the ingest service
+
+A Grant is already one device's access to one Meter, so a Web Push subscription is held as a Push Endpoint against the Grant rather than against a Meter, an account or a device fingerprint. That keeps the no-accounts decision of ADR-0001 intact — no email addresses, nothing to sign into — and makes revocation cover warnings for free: the sender only ever reads endpoints whose Grant is unrevoked, so an Admin revoking a device silences it without a second switch to remember.
+
+The ingest service sends the Leak Warnings, because it is the process that decides a flag moved and writes the Meter Event. Warning from there means one code path opens an Active Leak and warns about it, rather than the app polling for events it did not record. The cost is that the ingest service needs the VAPID private key and outbound access to the push services, and that a push failure is reported rather than retried — the next leak is the retry. Endpoints the push service answers 404 or 410 for are deleted, since no later push will ever reach them.

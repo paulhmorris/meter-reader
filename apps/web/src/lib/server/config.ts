@@ -11,3 +11,11 @@ export function cookieSecret(): string {
 export function adminPassword(): string {
   return env.ADMIN_PASSWORD ?? "";
 }
+
+/**
+ * The VAPID public key browsers subscribe with, shared with the ingest service that signs
+ * pushes with its pair. Unset means this app offers no leak warnings at all.
+ */
+export function vapidPublicKey(): string {
+  return env.VAPID_PUBLIC_KEY ?? "";
+}

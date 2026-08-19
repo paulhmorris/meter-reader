@@ -80,6 +80,24 @@ model Grant {
   device    String?
   /// Set when the Admin revokes this one device's access.
   revokedAt DateTime?
+  pushEndpoints PushEndpoint[]
 
   @@index([meterId])
+}
+
+/// A browser's address for pushing to one device, with the keys that encrypt to it. Held against a Grant, so revoking the Grant silences it.
+model PushEndpoint {
+  id        String   @id @default(uuid(7))
+  grantId   String
+  grant     Grant    @relation(fields: [grantId], references: [id], onDelete: Cascade)
+  /// The URL the browser's push service issued. A browser issues one per origin, so a device holding two Grants warns on both through the same endpoint.
+  endpoint  String
+  /// The device's public key and auth secret, which the payload is encrypted to.
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now())
+
+  /// One row per Grant per device, so re-enabling warnings replaces the row rather than collecting them.
+  @@unique([grantId, endpoint])
+  @@index([grantId])
 }

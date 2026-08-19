@@ -1,4 +1,5 @@
 <script lang="ts">
+  import LeakWarnings from "$lib/LeakWarnings.svelte";
   import type { PageData } from "./$types.js";
 
   let { data }: { data: PageData } = $props();
@@ -142,6 +143,10 @@
     We have not picked up this meter at all yet. Until our receiver hears it, there is nothing to
     show.
   </p>
+{/if}
+
+{#if data.pushKey}
+  <LeakWarnings meterId={data.meterId} publicKey={data.pushKey} />
 {/if}
 
 <style>

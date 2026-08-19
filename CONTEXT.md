@@ -69,3 +69,13 @@ _Avoid_: Owner, superuser
 **Admin Password**:
 The one secret that reaches the Admin surface, held only by the Admin. Never a Claim Code, and it names no Meter.
 _Avoid_: Admin code, admin account, admin login
+
+### Warnings
+
+**Leak Warning**:
+A push message sent to a device when a Meter Event opens an Active Leak. The only thing this app ever pushes: not backflow, not no-use, not a leak clearing.
+_Avoid_: Alert, notification, alarm
+
+**Push Endpoint**:
+A browser's address for pushing to one device, with the keys a Leak Warning is encrypted to. Held against a Grant, so revoking the Grant silences it, and dropped once the push service says it is gone.
+_Avoid_: Subscription, registration, token, device

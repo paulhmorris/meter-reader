@@ -3,5 +3,7 @@ import { vitePreprocess } from "@sveltejs/vite-plugin-svelte";
 
 export default {
   preprocess: vitePreprocess(),
-  kit: { adapter: adapter() },
+  // Registered from the meter page instead, so a device that never asks for leak warnings
+  // never gets a service worker.
+  kit: { adapter: adapter(), serviceWorker: { register: false } },
 };
