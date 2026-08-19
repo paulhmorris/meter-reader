@@ -9,9 +9,11 @@ datasource db {
 
 /// A physical Neptune R900 water meter, identified by the 32-bit id in its radio transmission.
 model Meter {
-  id        BigInt    @id
-  createdAt DateTime  @default(now())
-  readings  Reading[]
+  id         BigInt      @id
+  createdAt  DateTime    @default(now())
+  readings   Reading[]
+  claimCodes ClaimCode[]
+  grants     Grant[]
 }
 
 /// One decoded R900 transmission from a Meter, with the time it was received.
@@ -30,4 +32,31 @@ model Reading {
   receivedAt  DateTime
 
   @@index([meterId, receivedAt])
+}
+
+/// A secret string that names exactly one Meter and proves the holder is entitled to see it.
+model ClaimCode {
+  code      String    @id
+  meterId   BigInt
+  meter     Meter     @relation(fields: [meterId], references: [id], onDelete: Cascade)
+  createdAt DateTime  @default(now())
+  /// Set when the Admin rotates the code, which stops it claiming without touching existing Grants.
+  rotatedAt DateTime?
+  grants    Grant[]
+
+  @@index([meterId])
+}
+
+/// One device's access to one Meter, created by a Claim and held as a signed cookie.
+model Grant {
+  id        String     @id @default(uuid(7))
+  meterId   BigInt
+  meter     Meter      @relation(fields: [meterId], references: [id], onDelete: Cascade)
+  claimCode String?
+  claim     ClaimCode? @relation(fields: [claimCode], references: [code], onDelete: SetNull)
+  createdAt DateTime   @default(now())
+  /// Set when the Admin revokes this one device's access.
+  revokedAt DateTime?
+
+  @@index([meterId])
 }

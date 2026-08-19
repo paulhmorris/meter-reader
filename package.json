@@ -17,6 +17,7 @@
     "db:generate": "npm run generate --workspace packages/db",
     "db:migrate": "npm run migrate --workspace packages/db",
     "db:deploy": "npm run deploy --workspace packages/db",
+    "db:seed": "npm run seed --workspace apps/web",
     "lint": "oxlint",
     "format": "oxfmt .",
     "format:check": "oxfmt --check ."
