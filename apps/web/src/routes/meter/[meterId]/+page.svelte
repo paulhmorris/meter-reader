@@ -164,7 +164,7 @@
 
   .broken,
   .active-leak {
-    border-left-color: var(--broken);
+    border-left-color: var(--danger);
   }
 
   .events {
@@ -178,7 +178,7 @@
     display: flex;
     flex-direction: column;
     padding: 0.5rem 0;
-    border-bottom: 1px solid var(--rule);
+    border-bottom: 1px solid var(--border);
   }
 
   .events .muted {
@@ -187,7 +187,7 @@
 
   .consumption span {
     font-size: 1rem;
-    color: var(--muted);
+    color: var(--muted-foreground);
   }
 
   .chart {
@@ -209,7 +209,7 @@
   }
 
   .bar {
-    background: var(--bar);
+    background: var(--chart-usage);
     border-radius: 2px 2px 0 0;
     min-height: 1px;
   }
@@ -217,12 +217,12 @@
   /* Stripes mark a period whose Usage is off either way, Readings being missing near its edges. */
   .partial,
   .key {
-    background: repeating-linear-gradient(45deg, var(--bar) 0 2px, transparent 2px 4px);
+    background: repeating-linear-gradient(45deg, var(--chart-usage) 0 2px, transparent 2px 4px);
   }
 
   .note {
     display: flex;
-    color: var(--muted);
+    color: var(--muted-foreground);
     gap: 0.5rem;
     font-size: 0.75rem;
     line-height: 1.4;
@@ -238,7 +238,7 @@
 
   .label {
     font-size: 0.625rem;
-    color: var(--muted);
+    color: var(--muted-foreground);
     text-align: center;
     white-space: nowrap;
     overflow: hidden;

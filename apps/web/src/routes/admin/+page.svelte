@@ -52,7 +52,7 @@
     flex-direction: column;
     gap: 0.125rem;
     padding: 0.5rem 0;
-    border-bottom: 1px solid var(--rule);
+    border-bottom: 1px solid var(--border);
   }
 
   .muted,
@@ -61,6 +61,6 @@
   }
 
   .flag {
-    color: var(--broken);
+    color: var(--danger);
   }
 </style>

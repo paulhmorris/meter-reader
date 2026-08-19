@@ -162,7 +162,7 @@
   button {
     font: inherit;
     padding: 0.5rem 0.75rem;
-    border: 1px solid var(--rule);
+    border: 1px solid var(--border);
     border-radius: 4px;
     background: none;
     color: inherit;
@@ -170,6 +170,6 @@
 
   .warning {
     font-size: 0.875rem;
-    color: var(--broken);
+    color: var(--danger);
   }
 </style>

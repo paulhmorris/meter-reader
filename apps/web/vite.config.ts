@@ -1,4 +1,5 @@
 import { sentrySvelteKit } from "@sentry/sveltekit";
+import tailwindcss from "@tailwindcss/vite";
 import { sveltekit } from "@sveltejs/kit/vite";
 import { config } from "dotenv";
 import { defineConfig } from "vite";
@@ -7,5 +8,5 @@ import { defineConfig } from "vite";
 config({ path: "../../.env" });
 
 export default defineConfig({
-  plugins: [sentrySvelteKit({ autoUploadSourceMaps: false }), sveltekit()],
+  plugins: [sentrySvelteKit({ autoUploadSourceMaps: false }), tailwindcss(), sveltekit()],
 });

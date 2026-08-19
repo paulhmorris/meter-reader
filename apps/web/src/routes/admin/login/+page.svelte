@@ -39,6 +39,6 @@
   }
 
   .error {
-    color: var(--broken);
+    color: var(--danger);
   }
 </style>

@@ -76,7 +76,7 @@
     gap: 0.25rem;
     align-items: flex-start;
     padding: 0.5rem 0;
-    border-bottom: 1px solid var(--rule);
+    border-bottom: 1px solid var(--border);
     font-size: 0.875rem;
   }
 
@@ -85,6 +85,6 @@
   }
 
   .error {
-    color: var(--broken);
+    color: var(--danger);
   }
 </style>

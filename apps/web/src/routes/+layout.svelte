@@ -1,4 +1,6 @@
 <script lang="ts">
+  import "../app.css";
+
   let { children } = $props();
 </script>
 
@@ -7,22 +9,13 @@
 </main>
 
 <style>
-  :global(:root) {
-    --muted: #555;
-    --bar: canvastext;
-    --warning: #b26a00;
-    --broken: #b3261e;
-    --rule: color-mix(in srgb, canvastext 20%, transparent);
-  }
-
   main {
     max-width: 24rem;
     margin: 4rem auto;
     padding: 0 1rem;
-    font-family: system-ui, sans-serif;
   }
 
   :global(.muted) {
-    color: var(--muted);
+    color: var(--muted-foreground);
   }
 </style>
