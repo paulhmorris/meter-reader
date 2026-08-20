@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { dev } from "$app/environment";
   import { Button } from "$lib/components/ui/button/index.js";
   import { Card } from "$lib/components/ui/card/index.js";
   import Bell from "@lucide/svelte/icons/bell";
@@ -15,10 +14,6 @@
 
   const supported = () =>
     "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
-
-  // The build is a module in dev and a bundle in production, and registering says which it is.
-  const register = () =>
-    navigator.serviceWorker.register("/service-worker.js", { type: dev ? "module" : "classic" });
 
   const warningsUrl = $derived(`/meter/${meterId}/warnings`);
 
@@ -82,8 +77,7 @@
       return;
     }
 
-    const registration = await register();
-    await navigator.serviceWorker.ready;
+    const registration = await navigator.serviceWorker.ready;
     const subscription =
       (await held(registration)) ??
       (await registration.pushManager.subscribe({

@@ -70,7 +70,7 @@
   });
 </script>
 
-<svelte:head><title>Meter {data.meterId}</title></svelte:head>
+<svelte:head><title>Water usage · Meter {data.meterId}</title></svelte:head>
 
 <div class="space-y-6">
   <header class="flex items-center justify-between gap-3">
@@ -160,7 +160,7 @@
     </section>
 
     <section class="space-y-3">
-      <h2 class="text-sm font-medium">What the meter has reported</h2>
+      <h2 class="text-sm font-medium">Events</h2>
       <EventTimeline events={data.events} older={data.older} at={heardAt} />
     </section>
   {:else}

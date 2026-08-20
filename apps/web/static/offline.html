@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Offline · Meter Reader</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <style>
+      :root {
+        color-scheme: light dark;
+        --background: #f9f7f3;
+        --foreground: #2b2723;
+        --muted: #6b625a;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --background: #14120f;
+          --foreground: #f3f1ee;
+          --muted: #a89f96;
+        }
+      }
+      body {
+        margin: 0;
+        min-height: 100dvh;
+        display: grid;
+        place-items: center;
+        padding: 2rem 1.5rem;
+        background: var(--background);
+        color: var(--foreground);
+        font:
+          16px/1.6 ui-sans-serif,
+          system-ui,
+          sans-serif;
+      }
+      main {
+        max-width: 22rem;
+      }
+      h1 {
+        font-size: 1.25rem;
+        margin: 1.25rem 0 0.5rem;
+      }
+      p {
+        margin: 0;
+        color: var(--muted);
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <img src="/icon-192.png" alt="" width="44" height="44" style="border-radius: 12px" />
+      <h1>You are offline</h1>
+      <p>Meter readings come from our receiver, so there is nothing to show until you reconnect.</p>
+    </main>
+  </body>
+</html>
