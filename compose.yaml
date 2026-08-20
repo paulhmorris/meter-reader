@@ -46,10 +46,11 @@ services:
       PUBLIC_SENTRY_ENVIRONMENT: production
       # Only the public half: the app hands it to browsers, ingest signs with the private one.
       VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY}
-      # cloudflared puts the neighbour's address here; without it every household shares one rate-limit bucket.
-      ADDRESS_HEADER: CF-Connecting-IP
+      # Caddy and cloudflared both set it; without it every household shares one rate-limit bucket.
+      ADDRESS_HEADER: X-Forwarded-For
+      XFF_DEPTH: 1
     # Unset, only the tunnel reaches the app. Set it and a LAN reverse proxy can too,
-    # but it must send CF-Connecting-IP or every request through it fails.
+    # but it must send X-Forwarded-For or every request through it fails.
     ports:
       - "${WEB_BIND:-127.0.0.1:3010}:3000"
     depends_on:
