@@ -1,6 +1,7 @@
 <script lang="ts">
   import { page } from "$app/state";
   import { windowName } from "$lib/chart-format.js";
+  import EventTimeline from "$lib/components/EventTimeline.svelte";
   import LeakBanner from "$lib/components/LeakBanner.svelte";
   import MeterHealthBadge from "$lib/components/MeterHealthBadge.svelte";
   import StatCard from "$lib/components/StatCard.svelte";
@@ -181,10 +182,12 @@
       <UsageChart periods={data.chart} granularity={range.granularity} {drillHref} />
     </section>
 
-    <section class="space-y-3">
-      <h2 class="text-sm font-medium">Events</h2>
-      <p class="text-sm text-muted-foreground">Nothing yet</p>
-    </section>
+    {#if data.events.length > 0}
+      <section class="space-y-3">
+        <h2 class="text-sm font-medium">Events</h2>
+        <EventTimeline events={data.events} older={data.older} />
+      </section>
+    {/if}
   {:else}
     <p class="border-warning/40 bg-warning/10 rounded-lg border p-4 text-sm leading-relaxed">
       We have not picked up this meter at all yet. Until our receiver hears it, there is nothing to

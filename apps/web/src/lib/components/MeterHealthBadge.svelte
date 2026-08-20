@@ -22,14 +22,6 @@
 
   const HOUR_MS = 60 * 60 * 1000;
 
-  const at = new Intl.DateTimeFormat(undefined, {
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-    timeZone: "America/Chicago",
-  });
-
   const unheardForMs = $derived(lastHeardAt ? now.ms - lastHeardAt.getTime() : Infinity);
   /** Live is the last hour, not the whole day Stale allows: a meter reports every 15 minutes. */
   const live = $derived(unheardForMs < HOUR_MS);
@@ -39,11 +31,15 @@
     broken: { long: "Unheard for over three days", short: "Broken" },
   };
 
-  const quiet = $derived.by(() => {
-    if (!lastHeardAt) return "";
-    if (short) return `${Math.floor(unheardForMs / HOUR_MS)}h ago`;
-    return `Last update: ${at.format(lastHeardAt)}`;
-  });
+  /** Relative rather than a timestamp, so the badge stays a few characters wide beside the title. */
+  function ago(ms: number): string {
+    const hours = Math.floor(ms / HOUR_MS);
+    if (hours < 1) return `${Math.floor(ms / 60_000)}m ago`;
+    if (hours < 24) return `${hours}h ago`;
+    return `${Math.floor(hours / 24)}d ago`;
+  }
+
+  const quiet = $derived(lastHeardAt ? ago(unheardForMs) : "");
 </script>
 
 {#if health === null}

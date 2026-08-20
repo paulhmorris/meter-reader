@@ -39,9 +39,19 @@
 
   const describe = (period: ChartPeriod) => periodName(granularity, period);
 
+  const PER: Record<Granularity, string> = {
+    hour: "hour",
+    day: "day",
+    week: "week",
+    month: "month",
+  };
+
   let context = $state<any>();
   /** Where a press started, so a drag that ends on a bar reads as a drag and not as a tap. */
   let pressedAt: { x: number; y: number } | null = null;
+  /** A finger covers whatever it points at, so a touch pins the tooltip to the top of the chart. */
+  let touching = $state(false);
+  let helpOpen = $state(false);
 
   const still =
     typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -96,7 +106,11 @@
     <div
       class={height}
       role="presentation"
-      onpointerdown={(event) => (pressedAt = { x: event.clientX, y: event.clientY })}
+      onpointerdown={(event) => {
+        pressedAt = { x: event.clientX, y: event.clientY };
+        touching = event.pointerType === "touch";
+      }}
+      onpointermove={(event) => (touching = event.pointerType === "touch")}
       {onpointerup}
     >
       <BarChart
@@ -140,7 +154,12 @@
         {/snippet}
 
         {#snippet tooltip({ context }: { context: any })}
-          <Tooltip.Root {context} class="border border-border bg-popover text-popover-foreground">
+          <Tooltip.Root
+            {context}
+            y={touching ? 0 : "pointer"}
+            anchor="top-left"
+            class="border border-border bg-popover text-popover-foreground"
+          >
             {#snippet children({ data }: { data: ChartPeriod })}
               <div class="px-3 py-2">
                 <p class="text-xs text-muted-foreground">{describe(data)}</p>
@@ -200,7 +219,24 @@
           class="mt-0.5 size-3 shrink-0 rounded-sm border border-border bg-[repeating-linear-gradient(45deg,var(--muted-foreground)_0_1.5px,var(--background)_1.5px_4px)]"
           aria-hidden="true"
         ></span>
-        Possibly inaccurate
+        <span>
+          Possibly inaccurate
+          <button
+            type="button"
+            aria-expanded={helpOpen}
+            aria-label="Why a period can be inaccurate"
+            onclick={() => (helpOpen = !helpOpen)}
+            class="ml-0.5 inline-flex size-4 items-center justify-center rounded-full border border-border align-[-2px] leading-none hover:bg-accent"
+          >
+            ?
+          </button>
+          {#if helpOpen}
+            <span class="mt-1 block">
+              The total is right — it is how much of it lands in each {PER[granularity]} that may be
+              a little off.
+            </span>
+          {/if}
+        </span>
       </p>
     {/if}
   </figcaption>
