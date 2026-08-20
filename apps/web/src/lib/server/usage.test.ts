@@ -9,10 +9,11 @@ function store(readings: [iso: string, consumption: number][]): UsageStore {
     .sort((a, b) => a.receivedAt.getTime() - b.receivedAt.getTime());
 
   return {
-    async lastReadingBefore(_meterId, instants) {
-      return instants.map(
-        (instant) => stored.filter((reading) => reading.receivedAt < instant).at(-1) ?? null,
-      );
+    async boundaryReadings(_meterId, instants) {
+      return instants.map((instant) => ({
+        before: stored.filter((reading) => reading.receivedAt < instant).at(-1) ?? null,
+        from: stored.find((reading) => reading.receivedAt >= instant) ?? null,
+      }));
     },
   };
 }
@@ -175,6 +176,20 @@ describe("usageByPeriod", () => {
     expect(first).toMatchObject({ gallons: 0, partial: true });
   });
 
+  it("counts from the first Reading ever heard, rather than reading the day as no water", async () => {
+    const [day] = await usageByPeriod(
+      { store: evening },
+      {
+        meterId,
+        granularity: "day",
+        from: new Date("2026-06-15T22:00:00Z"),
+        to: new Date("2026-06-16T00:00:00Z"),
+      },
+    );
+
+    expect(day).toMatchObject({ gallons: 17.5, partial: true });
+  });
+
   it("buckets a spring-forward day into 23 hourly periods", async () => {
     const hours = await usageByPeriod(
       { store: evening },
@@ -286,9 +301,9 @@ describe("usageByPeriod", () => {
   it("asks the store for each boundary once", async () => {
     const instants: Date[][] = [];
     const counting: UsageStore = {
-      async lastReadingBefore(meterId, boundaries) {
+      async boundaryReadings(meterId, boundaries) {
         instants.push(boundaries);
-        return evening.lastReadingBefore(meterId, boundaries);
+        return evening.boundaryReadings(meterId, boundaries);
       },
     };
 

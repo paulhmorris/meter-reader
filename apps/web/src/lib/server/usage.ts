@@ -1,9 +1,16 @@
 import type { MeterReading } from "./meter.js";
 import { periods, type Granularity } from "./periods.js";
 
+export interface Boundary {
+  /** The last Reading strictly before the instant. */
+  before: MeterReading | null;
+  /** The first Reading at or after the instant. */
+  from: MeterReading | null;
+}
+
 export interface UsageStore {
-  /** The last Reading strictly before each instant, in the order the instants were given. */
-  lastReadingBefore(meterId: bigint, instants: Date[]): Promise<(MeterReading | null)[]>;
+  /** The Readings either side of each instant, in the order the instants were given. */
+  boundaryReadings(meterId: bigint, instants: Date[]): Promise<Boundary[]>;
 }
 
 export interface UsagePeriod {
@@ -63,17 +70,20 @@ export async function usageByPeriod(
 
   const limits = { to, staleAfterMs: STALE_AFTER_MS[granularity] };
   const boundaries = [...covered.map((period) => period.start), covered[covered.length - 1].end];
-  const readings = await store.lastReadingBefore(meterId, boundaries);
+  const readings = await store.boundaryReadings(meterId, boundaries);
 
   return covered.map((period, index) => {
-    const opening = readings[index];
-    const closing = readings[index + 1];
+    const before = readings[index].before;
+    // Nothing precedes the first period the Meter was ever heard in, so its own first Reading
+    // opens it: what the stored Readings account for, understated and Partial (ADR-0002).
+    const opening = before ?? readings[index].from;
+    const closing = readings[index + 1].before;
     const gallons = opening && closing ? closing.consumption - opening.consumption : 0;
 
     return {
       ...period,
       gallons: Math.round(gallons * 10) / 10,
-      partial: !trusted(period.start, opening, limits) || !trusted(period.end, closing, limits),
+      partial: !trusted(period.start, before, limits) || !trusted(period.end, closing, limits),
     };
   });
 }
