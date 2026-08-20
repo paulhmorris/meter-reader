@@ -1,7 +1,6 @@
 <script lang="ts">
   import { page } from "$app/state";
   import { windowName } from "$lib/chart-format.js";
-  import EventTimeline from "$lib/components/EventTimeline.svelte";
   import LeakBanner from "$lib/components/LeakBanner.svelte";
   import MeterHealthBadge from "$lib/components/MeterHealthBadge.svelte";
   import StatCard from "$lib/components/StatCard.svelte";
@@ -14,13 +13,6 @@
   import type { PageData } from "./$types.js";
 
   let { data }: { data: PageData } = $props();
-
-  const zone = "America/Chicago";
-  const heardAt = new Intl.DateTimeFormat(undefined, {
-    dateStyle: "medium",
-    timeStyle: "short",
-    timeZone: zone,
-  });
 
   const PRESET_NAMES: Record<Preset, string> = {
     today: "Today",
@@ -44,6 +36,14 @@
     month: "by month",
   };
 
+  /** What an average is worth saying per: an average hour of one day is not worth the line. */
+  const PER: Record<Granularity, string | null> = {
+    hour: null,
+    day: "day",
+    week: "week",
+    month: "month",
+  };
+
   const isFresh = $derived(data.health === "fresh");
   const range = $derived(data.range);
 
@@ -61,6 +61,20 @@
     }
     return params.size === 0 ? page.url.pathname : `${page.url.pathname}?${params}`;
   }
+
+  const gallons = new Intl.NumberFormat(undefined, {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+  });
+
+  /** The one figure the page leads with, which is the stretch the chart is on totted up. */
+  const total = $derived(data.chart.reduce((sum, period) => sum + period.gallons, 0));
+
+  const average = $derived.by(() => {
+    const per = PER[range.granularity];
+    if (per === null || data.chart.length === 0) return null;
+    return `${gallons.format(total / data.chart.length)} gal per ${per} on average`;
+  });
 
   const drillHref = $derived.by(() => {
     const finer = range.drillTo;
@@ -97,20 +111,15 @@
       </p>
     {/if}
 
-    <StatCard
-      hero={{ label: "Today", gallons: data.today }}
-      secondary={{ label: "7-day average", gallons: data.weekAverage, hint: "per day" }}
-    />
-
     <!-- Chart navigation replaces rather than stacks: Back leaves the page, not the last filter. -->
     <section class="space-y-3" data-sveltekit-replacestate data-sveltekit-noscroll>
-      <nav aria-label="How much to show" class="flex flex-wrap gap-1.5">
+      <nav aria-label="How much to show" class="flex flex-wrap gap-2">
         {#each Object.entries(PRESET_NAMES) as [preset, name] (preset)}
           {@const chosen = preset === range.preset && !range.drilled}
           <a
             href={chartHref(preset as Preset)}
             aria-current={chosen ? "page" : undefined}
-            class="rounded-md border px-2.5 py-1 text-xs font-medium transition-colors {chosen
+            class="inline-flex min-h-11 flex-1 items-center justify-center rounded-md border px-3 text-sm font-medium transition-colors {chosen
               ? 'border-transparent bg-primary text-primary-foreground'
               : 'border-border hover:bg-accent'}"
           >
@@ -157,12 +166,18 @@
         </p>
       {/if}
 
+      <StatCard
+        label={range.drilled ? stretch : PRESET_NAMES[range.preset]}
+        gallons={total}
+        hint={average}
+      />
+
       <UsageChart periods={data.chart} granularity={range.granularity} {drillHref} />
     </section>
 
     <section class="space-y-3">
       <h2 class="text-sm font-medium">Events</h2>
-      <EventTimeline events={data.events} older={data.older} at={heardAt} />
+      <p class="text-sm text-muted-foreground">Nothing yet</p>
     </section>
   {:else}
     <p class="border-warning/40 bg-warning/10 rounded-lg border p-4 text-sm leading-relaxed">
