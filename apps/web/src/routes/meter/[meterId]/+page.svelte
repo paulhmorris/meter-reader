@@ -102,7 +102,8 @@
       secondary={{ label: "7-day average", gallons: data.weekAverage, hint: "per day" }}
     />
 
-    <section class="space-y-3">
+    <!-- Chart navigation replaces rather than stacks: Back leaves the page, not the last filter. -->
+    <section class="space-y-3" data-sveltekit-replacestate data-sveltekit-noscroll>
       <nav aria-label="How much to show" class="flex flex-wrap gap-1.5">
         {#each Object.entries(PRESET_NAMES) as [preset, name] (preset)}
           {@const chosen = preset === range.preset && !range.drilled}
