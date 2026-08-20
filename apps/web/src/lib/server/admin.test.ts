@@ -87,6 +87,7 @@ describe("meterSummaries", () => {
         noUse: 0,
       },
       consumptionBefore: 481_200.5,
+      consumptionOpening: 481_210.5,
       readings: 96,
       rssi: -6.5,
       snr: 18.25,
@@ -132,7 +133,7 @@ describe("meterSummaries", () => {
     ]);
   });
 
-  it("carries the Meter's own flags, its Consumption and the last day's Usage", async () => {
+  it("carries the Meter's own flags, its Consumption and today's Usage", async () => {
     const [summary] = await meterSummaries(
       store({
         meters: async () => [
@@ -156,9 +157,18 @@ describe("meterSummaries", () => {
     });
   });
 
-  it("leaves the last day's Usage unsaid where no Reading before it survives to difference against", async () => {
+  it("opens today with its own first Reading where nothing precedes it, rather than saying nothing", async () => {
     const [summary] = await meterSummaries(
       store({ meters: async () => [stats({ consumptionBefore: null })] }),
+      now,
+    );
+
+    expect(summary.usage).toBe(110);
+  });
+
+  it("leaves today's Usage unsaid where the Meter has not been heard today at all", async () => {
+    const [summary] = await meterSummaries(
+      store({ meters: async () => [stats({ consumptionBefore: null, consumptionOpening: null })] }),
       now,
     );
 
@@ -170,7 +180,14 @@ describe("meterSummaries", () => {
     const summaries = await meterSummaries(
       store({
         meters: async () => [
-          stats({ latest: null, consumptionBefore: null, readings: 0, rssi: null, snr: null }),
+          stats({
+            latest: null,
+            consumptionBefore: null,
+            consumptionOpening: null,
+            readings: 0,
+            rssi: null,
+            snr: null,
+          }),
         ],
       }),
       now,

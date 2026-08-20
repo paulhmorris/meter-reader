@@ -64,7 +64,7 @@
     { column: "lastHeardAt", label: "Last heard" },
     { column: "rssi", label: "Signal" },
     { column: "readings", label: "Readings", hint: "24h", numeric: true },
-    { column: "usage", label: "Usage", hint: "24h, gal", numeric: true },
+    { column: "usage", label: "Usage", hint: "today, gal", numeric: true },
     { column: "consumption", label: "Total", hint: "gal", numeric: true },
     { column: "leakHistory", label: "Leak history" },
     { column: "flags", label: "Flags" },

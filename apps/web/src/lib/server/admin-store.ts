@@ -1,5 +1,6 @@
 import type { PrismaClient } from "@meter-reader/db";
 import type { AdminStore, MeterStats } from "./admin.js";
+import { startOf } from "./periods.js";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -14,6 +15,7 @@ interface MeterRow {
   backflow: number | null;
   noUse: number | null;
   consumptionBefore: number | null;
+  consumptionOpening: number | null;
   readings: number;
   rssi: number | null;
   snr: number | null;
@@ -43,6 +45,8 @@ export function prismaAdminStore(prisma: PrismaClient): AdminStore {
 
     async meters(now) {
       const since = new Date(now.getTime() - DAY_MS);
+      // Usage is the day's so far, which the Admin reads against a meter dial, not a rolling day.
+      const midnight = startOf("day", now);
 
       const rows = await prisma.$queryRaw<MeterRow[]>`
         SELECT
@@ -55,6 +59,7 @@ export function prismaAdminStore(prisma: PrismaClient): AdminStore {
           l."backflow",
           l."noUse",
           prior.consumption::float8 AS "consumptionBefore",
+          opening.consumption::float8 AS "consumptionOpening",
           heard.readings,
           heard.rssi,
           heard.snr,
@@ -70,10 +75,17 @@ export function prismaAdminStore(prisma: PrismaClient): AdminStore {
         LEFT JOIN LATERAL (
           SELECT consumption
           FROM "Reading"
-          WHERE "meterId" = m.id AND "receivedAt" < ${since}
+          WHERE "meterId" = m.id AND "receivedAt" < ${midnight}
           ORDER BY "receivedAt" DESC, id DESC
           LIMIT 1
         ) prior ON true
+        LEFT JOIN LATERAL (
+          SELECT consumption
+          FROM "Reading"
+          WHERE "meterId" = m.id AND "receivedAt" >= ${midnight}
+          ORDER BY "receivedAt" ASC, id ASC
+          LIMIT 1
+        ) opening ON true
         LEFT JOIN LATERAL (
           SELECT
             count(*)::int AS readings,
@@ -95,6 +107,7 @@ export function prismaAdminStore(prisma: PrismaClient): AdminStore {
         address: row.address,
         latest: latestOf(row),
         consumptionBefore: row.consumptionBefore,
+        consumptionOpening: row.consumptionOpening,
         readings: row.readings,
         rssi: row.rssi,
         snr: row.snr,

@@ -31,7 +31,7 @@ export interface StoredReading {
 export interface AdminStore {
   /** Whether the SDR has ever heard this Meter, there being nothing to administer otherwise. */
   hasMeter(meterId: bigint): Promise<boolean>;
-  /** Every Meter with what the last day says about it, the window measured back from `now`. */
+  /** Every Meter with today's Usage and how the last 24 hours went, both judged from `now`. */
   meters(now: Date): Promise<MeterStats[]>;
   /** Where the Admin has written the Meter down as being, null while nothing is written. */
   address(meterId: bigint): Promise<string | null>;
@@ -47,7 +47,7 @@ export interface AdminStore {
   revokeGrant(input: { grantId: string; meterId: bigint; now: Date }): Promise<boolean>;
 }
 
-/** One Meter's latest Reading and what the last 24 hours of Readings amount to. */
+/** One Meter's latest Reading, what today's Usage comes to and how the last 24 hours were heard. */
 export interface MeterStats {
   id: bigint;
   /** Where the Admin has written the Meter down as being, null while nothing is written. */
@@ -61,8 +61,10 @@ export interface MeterStats {
     backflow: number;
     noUse: number;
   } | null;
-  /** Consumption at the last Reading before the window opened, null when none survives it. */
+  /** Consumption at the last Reading before today began, null when none survives it. */
   consumptionBefore: number | null;
+  /** Consumption at today's first Reading, which opens the day where nothing precedes it. */
+  consumptionOpening: number | null;
   /** Readings stored inside the window, which is how well the SDR is hearing this Meter. */
   readings: number;
   /** Mean levels across the window, null unless rtl_433 is reporting them. */
@@ -111,7 +113,7 @@ export interface MeterSummary {
   noUse: boolean;
   /** The Meter's lifetime cumulative gallons at its latest Reading. */
   consumption: number | null;
-  /** Gallons over the last 24 hours, null while no Reading before the window survives to difference against. */
+  /** Gallons used since midnight, understated where the Meter was first heard after it. */
   usage: number | null;
   /** Readings heard in the last 24 hours, against the 96 a Meter transmitting quietly still forces. */
   readings: number;
@@ -124,23 +126,32 @@ export interface MeterSummary {
 export async function meterSummaries(store: AdminStore, now: Date): Promise<MeterSummary[]> {
   const meters = await store.meters(now);
 
-  return meters.map(({ id, address, latest, consumptionBefore, readings, rssi, snr, devices }) => ({
-    id,
-    address,
-    lastHeardAt: latest?.receivedAt ?? null,
-    health: latest ? meterHealth(latest.receivedAt, now) : null,
-    activeLeak: latest ? activeLeakLevel(latest.activeLeak) : null,
-    leakHistory: latest ? leakHistoryLabel(latest.leakHistory) : null,
-    leakHistoryBucket: latest?.leakHistory ?? 0,
-    backflow: (latest?.backflow ?? 0) > 0,
-    noUse: (latest?.noUse ?? 0) > 0,
-    consumption: latest?.consumption ?? null,
-    usage: latest && consumptionBefore !== null ? latest.consumption - consumptionBefore : null,
-    readings,
-    rssi,
-    snr,
-    devices,
-  }));
+  return meters.map((meter) => {
+    const { id, address, latest, consumptionBefore, consumptionOpening } = meter;
+    const { readings, rssi, snr, devices } = meter;
+    // Nothing precedes the first day the Meter was ever heard in, so its own first Reading opens
+    // it: the Usage the stored Readings account for, understated (ADR-0002).
+    const opening = consumptionBefore ?? consumptionOpening;
+
+    return {
+      id,
+      address,
+      lastHeardAt: latest?.receivedAt ?? null,
+      health: latest ? meterHealth(latest.receivedAt, now) : null,
+      activeLeak: latest ? activeLeakLevel(latest.activeLeak) : null,
+      leakHistory: latest ? leakHistoryLabel(latest.leakHistory) : null,
+      leakHistoryBucket: latest?.leakHistory ?? 0,
+      backflow: (latest?.backflow ?? 0) > 0,
+      noUse: (latest?.noUse ?? 0) > 0,
+      consumption: latest?.consumption ?? null,
+      usage:
+        latest && opening !== null ? Math.round((latest.consumption - opening) * 10) / 10 : null,
+      readings,
+      rssi,
+      snr,
+      devices,
+    };
+  });
 }
 
 /** One Reading as the Admin page lists it, with what it added since the Reading before it. */

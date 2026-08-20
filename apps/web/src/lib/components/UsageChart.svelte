@@ -152,7 +152,7 @@
                   <p class="mt-1 text-xs text-danger">The meter reported a leak during this time</p>
                 {/if}
                 {#if data.partial}
-                  <p class="mt-1 text-xs text-muted-foreground">Incomplete data</p>
+                  <p class="mt-1 text-xs text-muted-foreground">Possibly inaccurate</p>
                 {/if}
               </div>
             {/snippet}
@@ -200,7 +200,7 @@
           class="mt-0.5 size-3 shrink-0 rounded-sm border border-border bg-[repeating-linear-gradient(45deg,var(--muted-foreground)_0_1.5px,var(--background)_1.5px_4px)]"
           aria-hidden="true"
         ></span>
-        Incomplete data
+        Possibly inaccurate
       </p>
     {/if}
   </figcaption>
