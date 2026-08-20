@@ -83,6 +83,8 @@ cp .env.production.example .env    # then fill it in
 docker compose up -d --build
 ```
 
+The tunnel sits behind the `tunnel` profile, so a plain `docker compose up -d` leaves it alone. Once `TUNNEL_TOKEN` is set, bring it up with `docker compose --profile tunnel up -d`.
+
 The tunnel is half a dashboard job. In Cloudflare Zero Trust, under Networks → Tunnels, create a tunnel, copy its connector token into `TUNNEL_TOKEN`, and add a public hostname routing the domain in `ORIGIN` to `http://web:3000` — the service name on the compose network, not localhost. The connector comes up either way, so without that route the site answers 502 rather than failing to start.
 
 `.env` beside `compose.yaml` holds every secret and is never committed. Compose builds `DATABASE_URL` from `POSTGRES_PASSWORD`, and both processes report to Sentry with the environment `production` rather than the `development` a local `.env` gives them.
@@ -95,7 +97,7 @@ The tunnel is half a dashboard job. In Cloudflare Zero Trust, under Networks →
 | `migrate`    | Runs `prisma migrate deploy` and exits. `web` and `ingest` wait for it.      |
 | `web`        | The SvelteKit app on port 3000, published per `WEB_BIND`.                    |
 | `ingest`     | Subscribes to the broker and stores Readings.                                |
-| `cloudflared`| The tunnel that serves `ORIGIN`.                                         |
+| `cloudflared`| The tunnel that serves `ORIGIN`. Not started with the others; see below.     |
 | `prune`      | Thins old Readings. Not started with the others; run nightly (below).        |
 
 `web` and `ingest` are `restart: unless-stopped`, so both come back on failure and after a reboot.
@@ -121,7 +123,7 @@ Bear in mind a LAN route is a second door to `/admin`, held open by `ADMIN_PASSW
 ### Restarting
 
 ```sh
-docker compose restart ingest      # or web, or cloudflared
+docker compose restart ingest      # or web
 docker compose logs -f ingest      # what it is doing
 docker compose ps                  # web reports healthy from GET /health
 ```

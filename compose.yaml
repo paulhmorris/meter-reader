@@ -84,7 +84,9 @@ services:
       migrate:
         condition: service_completed_successfully
 
+  # Off until TUNNEL_TOKEN is set: docker compose --profile tunnel up -d
   cloudflared:
+    profiles: [tunnel]
     image: cloudflare/cloudflared:latest
     restart: unless-stopped
     command: tunnel --no-autoupdate run
