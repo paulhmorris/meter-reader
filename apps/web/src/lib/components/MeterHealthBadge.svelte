@@ -1,5 +1,6 @@
 <script lang="ts">
   import { Badge } from "$lib/components/ui/badge/index.js";
+  import { now } from "$lib/now.svelte.js";
   import RadioTower from "@lucide/svelte/icons/radio-tower";
   import TriangleAlert from "@lucide/svelte/icons/triangle-alert";
 
@@ -29,7 +30,7 @@
     timeZone: "America/Chicago",
   });
 
-  const unheardForMs = $derived(lastHeardAt ? Date.now() - lastHeardAt.getTime() : Infinity);
+  const unheardForMs = $derived(lastHeardAt ? now.ms - lastHeardAt.getTime() : Infinity);
   /** Live is the last hour, not the whole day Stale allows: a meter reports every 15 minutes. */
   const live = $derived(unheardForMs < HOUR_MS);
 
@@ -56,9 +57,10 @@
   <Badge variant="outline" class="text-muted-foreground {className}">{quiet}</Badge>
 {:else}
   <Badge
-    class="gap-1.5 border-transparent {health === 'broken'
-      ? 'bg-danger text-danger-foreground'
-      : 'bg-warning text-warning-foreground'} {className}"
+    variant="outline"
+    class="gap-1.5 {health === 'broken'
+      ? 'border-danger/40 bg-danger/5 text-danger'
+      : 'border-warning/40 bg-warning/5 text-warning'} {className}"
   >
     <TriangleAlert class="size-3" aria-hidden="true" />
     {short ? UNHEARD[health].short : UNHEARD[health].long}
