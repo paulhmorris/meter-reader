@@ -8,3 +8,5 @@ build
 dist
 packages/db/src/generated
 .DS_Store
+
+.claude/settings.local.json
