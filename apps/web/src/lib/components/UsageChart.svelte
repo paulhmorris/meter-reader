@@ -163,7 +163,7 @@
             {#snippet children({ data }: { data: ChartPeriod })}
               <div class="px-3 py-2">
                 <p class="text-xs text-muted-foreground">{describe(data)}</p>
-                <p class="text-base font-semibold tabular-nums">
+                <p class="text-base font-semibold">
                   {gallons.format(data.gallons)}
                   <span class="text-xs font-normal text-muted-foreground">gal</span>
                 </p>

@@ -3,7 +3,7 @@ import { issueClaimCode, parseAddress, recentReadings } from "$lib/server/admin.
 import { prismaAdminStore } from "$lib/server/admin-store.js";
 import { formatClaimCode } from "$lib/server/claim-code.js";
 import { prisma } from "$lib/server/db.js";
-import { parseMeterId } from "$lib/server/meter.js";
+import { meterHealth, parseMeterId } from "$lib/server/meter.js";
 import type { Actions, PageServerLoad } from "./$types.js";
 
 async function meterOf(params: { meterId: string }): Promise<bigint> {
@@ -27,7 +27,9 @@ export const load: PageServerLoad = async ({ params }) => {
     recentReadings(store, { meterId, count: READINGS_SHOWN }),
   ]);
 
-  return { meterId: String(meterId), address, claimCode, grants, readings };
+  const health = readings[0] ? meterHealth(readings[0].receivedAt, new Date()) : null;
+
+  return { meterId: String(meterId), address, claimCode, grants, readings, health };
 };
 
 export const actions: Actions = {

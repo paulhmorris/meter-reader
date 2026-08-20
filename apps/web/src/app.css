@@ -129,5 +129,7 @@
   body {
     @apply bg-background text-foreground;
     font-family: system-ui, sans-serif;
+    /* Every figure the app shows is one a reader compares to another, so digits are all one width. */
+    font-variant-numeric: tabular-nums;
   }
 }

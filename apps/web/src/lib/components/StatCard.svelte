@@ -36,7 +36,7 @@
 <Card class="gap-0 p-3.5">
   <p class="text-xs font-medium uppercase tracking-wide text-muted-foreground">{label}</p>
   <p class="mt-0.5 flex items-baseline gap-1.5">
-    <span class="text-3xl font-semibold tabular-nums" use:countUp={total}>
+    <span class="text-3xl font-semibold" use:countUp={total}>
       {gallons.format(total)}
     </span>
     <span class="text-sm text-muted-foreground">gal</span>

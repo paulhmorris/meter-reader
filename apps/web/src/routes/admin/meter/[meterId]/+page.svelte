@@ -1,6 +1,7 @@
 <script lang="ts">
   import { enhance } from "$app/forms";
   import { stampedAt } from "$lib/admin-format.js";
+  import MeterHealthBadge from "$lib/components/MeterHealthBadge.svelte";
   import { Badge } from "$lib/components/ui/badge/index.js";
   import * as AlertDialog from "$lib/components/ui/alert-dialog/index.js";
   import { Button, buttonVariants } from "$lib/components/ui/button/index.js";
@@ -37,10 +38,13 @@
 <div class="space-y-6">
   <header class="space-y-3">
     <div class="flex flex-wrap items-center justify-between gap-3">
-      <h1 class="text-lg font-semibold tabular-nums tracking-tight">Meter {data.meterId}</h1>
-      <a href="/meter/{data.meterId}" class={buttonVariants({ variant: "outline", size: "sm" })}>
-        Neighbor view
-      </a>
+      <h1 class="text-lg font-semibold tracking-tight">Meter {data.meterId}</h1>
+      <div class="flex items-center gap-2">
+        <MeterHealthBadge health={data.health} lastHeardAt={latest?.receivedAt ?? null} />
+        <a href="/meter/{data.meterId}" class={buttonVariants({ variant: "outline", size: "sm" })}>
+          Neighbor view
+        </a>
+      </div>
     </div>
     <a
       href="/admin"
@@ -58,7 +62,7 @@
           </Badge>
         {/if}
         {#if latest.rssi !== null}
-          <Badge variant="outline" class="tabular-nums text-muted-foreground">
+          <Badge variant="outline" class="text-muted-foreground">
             {decimal.format(latest.rssi)} dBm
           </Badge>
         {/if}
@@ -93,7 +97,7 @@
     <div class="space-y-3 px-4">
       {#if form?.issued}
         <p
-          class="border-primary/40 bg-primary/10 rounded-lg border p-4 text-center text-xl font-semibold tabular-nums tracking-[0.15em]"
+          class="border-primary/40 bg-primary/10 rounded-lg border p-4 text-center text-xl font-semibold tracking-[0.15em]"
         >
           <code>{form.issued}</code>
         </p>
@@ -199,7 +203,7 @@
               <Table.Cell class="px-4 py-2.5 text-muted-foreground">
                 {stampedAt(reading.receivedAt)}
               </Table.Cell>
-              <Table.Cell class="px-4 py-2.5 text-right tabular-nums">
+              <Table.Cell class="px-4 py-2.5 text-right">
                 {reading.usage === null ? "—" : decimal.format(reading.usage)}
               </Table.Cell>
             </Table.Row>

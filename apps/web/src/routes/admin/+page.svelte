@@ -151,7 +151,7 @@
         <Table.Body>
           {#each sorted as meter (meter.id)}
             <Table.Row class="last:border-0">
-              <Table.Cell class="px-3 py-3 font-medium tabular-nums">
+              <Table.Cell class="px-3 py-3 font-medium">
                 <a class="hover:underline" href="/admin/meter/{meter.id}">{meter.id}</a>
               </Table.Cell>
               <Table.Cell class="max-w-52 truncate px-3 py-3" title={meter.address ?? undefined}>
@@ -176,7 +176,7 @@
               <Table.Cell class="whitespace-nowrap px-3 py-3 text-muted-foreground">
                 {meter.lastHeardAt ? stampedAt(meter.lastHeardAt) : "—"}
               </Table.Cell>
-              <Table.Cell class="whitespace-nowrap px-3 py-3 tabular-nums">
+              <Table.Cell class="whitespace-nowrap px-3 py-3">
                 {#if meter.rssi === null}
                   <span class="text-muted-foreground" title="The receiver reports no levels">—</span
                   >
@@ -184,11 +184,11 @@
                   {decimal.format(meter.rssi)} dBm
                 {/if}
               </Table.Cell>
-              <Table.Cell class="px-3 py-3 text-right tabular-nums">{meter.readings}</Table.Cell>
-              <Table.Cell class="px-3 py-3 text-right tabular-nums">
+              <Table.Cell class="px-3 py-3 text-right">{meter.readings}</Table.Cell>
+              <Table.Cell class="px-3 py-3 text-right">
                 {meter.usage === null ? "—" : decimal.format(meter.usage)}
               </Table.Cell>
-              <Table.Cell class="px-3 py-3 text-right tabular-nums text-muted-foreground">
+              <Table.Cell class="px-3 py-3 text-right text-muted-foreground">
                 {meter.consumption === null ? "—" : decimal.format(meter.consumption)}
               </Table.Cell>
               <Table.Cell class="whitespace-nowrap px-3 py-3 text-muted-foreground">
@@ -210,7 +210,7 @@
                   <span class="text-muted-foreground">—</span>
                 {/if}
               </Table.Cell>
-              <Table.Cell class="px-3 py-3 text-right tabular-nums">{meter.devices}</Table.Cell>
+              <Table.Cell class="px-3 py-3 text-right">{meter.devices}</Table.Cell>
             </Table.Row>
           {/each}
         </Table.Body>
