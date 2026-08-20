@@ -1,5 +1,5 @@
 import { error, fail } from "@sveltejs/kit";
-import { issueClaimCode } from "$lib/server/admin.js";
+import { issueClaimCode, parseAddress, recentReadings } from "$lib/server/admin.js";
 import { prismaAdminStore } from "$lib/server/admin-store.js";
 import { formatClaimCode } from "$lib/server/claim-code.js";
 import { prisma } from "$lib/server/db.js";
@@ -14,16 +14,20 @@ async function meterOf(params: { meterId: string }): Promise<bigint> {
   return meterId;
 }
 
+const READINGS_SHOWN = 10;
+
 export const load: PageServerLoad = async ({ params }) => {
   const meterId = await meterOf(params);
   const store = prismaAdminStore(prisma());
 
-  const [claimCode, grants] = await Promise.all([
+  const [address, claimCode, grants, readings] = await Promise.all([
+    store.address(meterId),
     store.activeClaimCode(meterId),
     store.grants(meterId),
+    recentReadings(store, { meterId, count: READINGS_SHOWN }),
   ]);
 
-  return { meterId: String(meterId), claimCode, grants };
+  return { meterId: String(meterId), address, claimCode, grants, readings };
 };
 
 export const actions: Actions = {
@@ -33,6 +37,19 @@ export const actions: Actions = {
     const code = await issueClaimCode(prismaAdminStore(prisma()), { meterId, now: new Date() });
 
     return { issued: formatClaimCode(code) };
+  },
+
+  /** Writes down where the meter is, so a leak names a neighbour rather than a number. */
+  address: async ({ params, request }) => {
+    const meterId = await meterOf(params);
+    const form = await request.formData();
+
+    await prismaAdminStore(prisma()).setAddress({
+      meterId,
+      address: parseAddress(String(form.get("address") ?? "")),
+    });
+
+    return { addressSaved: true };
   },
 
   revoke: async ({ params, request }) => {

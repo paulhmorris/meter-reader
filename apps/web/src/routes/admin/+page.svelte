@@ -29,6 +29,7 @@
   type Meter = PageData["meters"][number];
   type Column =
     | "id"
+    | "address"
     | "lastHeardAt"
     | "health"
     | "rssi"
@@ -47,6 +48,8 @@
 
   const RANK: Record<Column, (meter: Meter) => number | string> = {
     id: (meter) => Number(meter.id),
+    /** Unwritten sorts last however the column is turned, rather than leading the written ones. */
+    address: (meter) => meter.address ?? "\uffff",
     lastHeardAt: (meter) => meter.lastHeardAt?.getTime() ?? 0,
     health: (meter) => HEALTH_ORDER[meter.health ?? "unheard"],
     rssi: (meter) => meter.rssi ?? UNHEARD_LEVEL,
@@ -60,6 +63,7 @@
 
   const HEADINGS: { column: Column; label: string; hint?: string; numeric?: boolean }[] = [
     { column: "id", label: "Meter" },
+    { column: "address", label: "Address" },
     { column: "health", label: "Health" },
     { column: "lastHeardAt", label: "Last heard" },
     { column: "rssi", label: "Signal" },
@@ -100,14 +104,14 @@
   </header>
 
   {#if data.meters.length > 0}
-    <Card class="overflow-hidden p-0">
+    <Card>
       <Table.Root>
         <Table.Header>
           <Table.Row class="hover:bg-transparent">
             {#each HEADINGS as { column, label, hint, numeric } (column)}
               {@const chosen = sort.column === column}
               <Table.Head
-                class="whitespace-nowrap px-3"
+                class="h-auto whitespace-nowrap px-3 py-2"
                 aria-sort={chosen ? (sort.descending ? "descending" : "ascending") : "none"}
               >
                 <button
@@ -140,11 +144,20 @@
               <Table.Cell class="px-3 py-3 font-medium tabular-nums">
                 <a class="hover:underline" href="/admin/meter/{meter.id}">{meter.id}</a>
               </Table.Cell>
+              <Table.Cell class="max-w-52 truncate px-3 py-3" title={meter.address ?? undefined}>
+                {#if meter.address}
+                  {meter.address}
+                {:else}
+                  <a class="text-muted-foreground hover:underline" href="/admin/meter/{meter.id}">
+                    Add one
+                  </a>
+                {/if}
+              </Table.Cell>
               <Table.Cell class="px-3 py-3">
                 <div class="flex flex-col items-start gap-1">
                   <MeterHealthBadge health={meter.health} lastHeardAt={meter.lastHeardAt} short />
                   {#if meter.activeLeak && meter.activeLeak !== "none"}
-                    <Badge class="border-transparent bg-danger text-danger-foreground">
+                    <Badge variant="outline" class="border-danger/40 bg-danger/5 text-danger">
                       {LEAK[meter.activeLeak]}
                     </Badge>
                   {/if}
@@ -180,7 +193,7 @@
                 {#if meter.backflow || meter.noUse}
                   <div class="flex flex-col items-start gap-1">
                     {#if meter.backflow}
-                      <Badge class="border-transparent bg-warning text-warning-foreground">
+                      <Badge variant="outline" class="border-warning/40 bg-warning/5 text-warning">
                         Backflow
                       </Badge>
                     {/if}

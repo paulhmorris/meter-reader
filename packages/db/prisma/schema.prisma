@@ -11,6 +11,8 @@ datasource db {
 model Meter {
   id         BigInt       @id
   createdAt  DateTime     @default(now())
+  /// Where the Meter is, written down by the Admin so a leak can be traced to a neighbour.
+  address    String?
   readings   Reading[]
   events     MeterEvent[]
   claimCodes ClaimCode[]

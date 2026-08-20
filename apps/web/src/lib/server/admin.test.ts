@@ -2,9 +2,12 @@ import { describe, expect, it, vi } from "vitest";
 import {
   issueClaimCode,
   meterSummaries,
+  parseAddress,
+  recentReadings,
   signIn,
   type AdminStore,
   type MeterStats,
+  type StoredReading,
 } from "./admin.js";
 import { createRateLimiter } from "./rate-limit.js";
 
@@ -16,8 +19,11 @@ function store(overrides: Partial<AdminStore> = {}): AdminStore {
   return {
     hasMeter: async () => true,
     meters: async () => [],
+    address: async () => null,
+    setAddress: async () => {},
     activeClaimCode: async () => null,
     rotateClaimCode: async () => {},
+    readings: async () => [],
     grants: async () => [],
     revokeGrant: async () => false,
     ...overrides,
@@ -71,6 +77,7 @@ describe("meterSummaries", () => {
   function stats(overrides: Partial<MeterStats> = {}): MeterStats {
     return {
       id: 1n,
+      address: null,
       latest: {
         receivedAt: new Date("2026-08-19T11:00:00Z"),
         consumption: 481_320.5,
@@ -172,6 +179,7 @@ describe("meterSummaries", () => {
     expect(summaries).toEqual([
       {
         id: 1n,
+        address: null,
         lastHeardAt: null,
         health: null,
         activeLeak: null,
@@ -188,6 +196,15 @@ describe("meterSummaries", () => {
       },
     ]);
   });
+
+  it("carries the Address through, so the list names the neighbour", async () => {
+    const summaries = await meterSummaries(
+      store({ meters: async () => [stats({ address: "123 Sesame St" })] }),
+      now,
+    );
+
+    expect(summaries[0]?.address).toBe("123 Sesame St");
+  });
 });
 
 describe("issueClaimCode", () => {
@@ -203,5 +220,66 @@ describe("issueClaimCode", () => {
     const first = await issueClaimCode(store(), { meterId, now });
     const second = await issueClaimCode(store(), { meterId, now });
     expect(first).not.toBe(second);
+  });
+});
+
+describe("recentReadings", () => {
+  function reading(id: number, consumption: number): StoredReading {
+    return {
+      id: BigInt(id),
+      receivedAt: new Date(Date.UTC(2026, 7, 19, id)),
+      consumption,
+      rssi: -70.5,
+      snr: 12,
+    };
+  }
+
+  const heard = [reading(4, 40), reading(3, 30), reading(2, 25), reading(1, 10)];
+
+  it("gives each Reading the gallons it added over the one before it", async () => {
+    const readings = await recentReadings(store({ readings: async () => heard }), {
+      meterId,
+      count: 3,
+    });
+
+    expect(readings.map((r) => r.usage)).toEqual([10, 5, 15]);
+  });
+
+  it("reads one more than it shows, so the oldest shown still has a Usage", async () => {
+    const asked = vi.fn(async () => heard);
+    const readings = await recentReadings(store({ readings: asked }), { meterId, count: 3 });
+
+    expect(asked).toHaveBeenCalledWith(meterId, 4);
+    expect(readings).toHaveLength(3);
+  });
+
+  it("leaves the Meter's very first Reading without a Usage, having nothing behind it", async () => {
+    const readings = await recentReadings(store({ readings: async () => heard }), {
+      meterId,
+      count: 10,
+    });
+
+    expect(readings).toHaveLength(4);
+    expect(readings.at(-1)?.usage).toBeNull();
+  });
+});
+
+describe("parseAddress", () => {
+  it("keeps what the Admin typed", () => {
+    expect(parseAddress("123 Sesame St")).toBe("123 Sesame St");
+  });
+
+  it("reads a blank field as no Address, which is how one is rubbed out", () => {
+    expect(parseAddress("   ")).toBeNull();
+    expect(parseAddress("")).toBeNull();
+  });
+
+  it("flattens an Address onto one line, however it was pasted", () => {
+    expect(parseAddress("  123  Sesame\n St ")).toBe("123 Sesame St");
+  });
+
+  it("stops at a street line, a paste longer than that being a mistake", () => {
+    const address = parseAddress("1 " + "a".repeat(200));
+    expect(address).toHaveLength(120);
   });
 });

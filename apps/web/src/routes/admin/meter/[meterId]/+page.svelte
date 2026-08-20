@@ -3,6 +3,7 @@
   import * as AlertDialog from "$lib/components/ui/alert-dialog/index.js";
   import { Button, buttonVariants } from "$lib/components/ui/button/index.js";
   import { Card, CardHeader, CardTitle } from "$lib/components/ui/card/index.js";
+  import { Input } from "$lib/components/ui/input/index.js";
   import * as Table from "$lib/components/ui/table/index.js";
   import ArrowLeft from "@lucide/svelte/icons/arrow-left";
   import type { ActionData, PageData } from "./$types.js";
@@ -16,6 +17,19 @@
     timeStyle: "short",
     timeZone: "America/Chicago",
   });
+
+  const heardAt = new Intl.DateTimeFormat(undefined, {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    timeZone: "America/Chicago",
+  });
+
+  const decimal = new Intl.NumberFormat(undefined, { maximumFractionDigits: 1 });
+
+  /** What the server keeps of an Address, so the field stops where the stored value would. */
+  const ADDRESS_LIMIT = 120;
 </script>
 
 <svelte:head><title>Admin — meter {data.meterId}</title></svelte:head>
@@ -36,6 +50,33 @@
       </a>
     </div>
   </header>
+
+  <Card>
+    <CardHeader>
+      <CardTitle>Address</CardTitle>
+    </CardHeader>
+
+    <form method="post" action="?/address" use:enhance class="flex items-center gap-2 px-4">
+      <Input
+        name="address"
+        value={data.address ?? ""}
+        placeholder="123 Sesame St"
+        maxlength={ADDRESS_LIMIT}
+        autocomplete="off"
+        aria-label="Where this meter is"
+        class="h-9 min-w-0 flex-1"
+      />
+      <Button type="submit" variant="outline">Save</Button>
+    </form>
+
+    <p class="px-4 text-xs text-muted-foreground">
+      {#if form?.addressSaved}
+        Saved. Only you see it — a neighbour never does.
+      {:else}
+        Only you see it — a neighbour never does. Empty it to rub it out.
+      {/if}
+    </p>
+  </Card>
 
   <Card>
     <CardHeader>
@@ -129,6 +170,58 @@
       </Table.Root>
     {:else}
       <p class="px-4 text-sm text-muted-foreground">No device holds access to this meter.</p>
+    {/if}
+  </Card>
+
+  <Card class="overflow-hidden">
+    <CardHeader>
+      <CardTitle>Latest readings</CardTitle>
+    </CardHeader>
+
+    {#if data.readings.length > 0}
+      <Table.Root>
+        <Table.Header>
+          <Table.Row class="hover:bg-transparent">
+            <Table.Head class="px-4">Heard</Table.Head>
+            <Table.Head class="px-4 text-right">Total</Table.Head>
+            <Table.Head class="px-4 text-right">Usage</Table.Head>
+            <Table.Head class="px-4 text-right">Signal</Table.Head>
+          </Table.Row>
+        </Table.Header>
+        <Table.Body>
+          {#each data.readings as reading (reading.id)}
+            <Table.Row>
+              <Table.Cell class="px-4 py-2.5 text-muted-foreground">
+                {heardAt.format(reading.receivedAt)}
+              </Table.Cell>
+              <Table.Cell class="px-4 py-2.5 text-right tabular-nums">
+                {decimal.format(reading.consumption)}
+              </Table.Cell>
+              <Table.Cell class="px-4 py-2.5 text-right tabular-nums">
+                {reading.usage === null ? "—" : decimal.format(reading.usage)}
+              </Table.Cell>
+              <Table.Cell class="px-4 py-2.5 text-right tabular-nums">
+                {#if reading.rssi === null}
+                  <span class="text-muted-foreground" title="The receiver reports no levels">—</span
+                  >
+                {:else}
+                  {decimal.format(reading.rssi)} dBm
+                  {#if reading.snr !== null}
+                    <span class="block text-xs text-muted-foreground">
+                      {decimal.format(reading.snr)} dB SNR
+                    </span>
+                  {/if}
+                {/if}
+              </Table.Cell>
+            </Table.Row>
+          {/each}
+        </Table.Body>
+      </Table.Root>
+      <p class="px-4 text-xs text-muted-foreground">
+        Gallons. Usage is what each reading added over the one before it.
+      </p>
+    {:else}
+      <p class="px-4 text-sm text-muted-foreground">The receiver has not heard this meter yet.</p>
     {/if}
   </Card>
 </div>

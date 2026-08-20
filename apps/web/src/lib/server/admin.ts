@@ -16,14 +16,30 @@ export interface AdminGrant {
   device: string | null;
 }
 
+/** One Reading as the Admin store hands it over, newest first. */
+export interface StoredReading {
+  id: bigint;
+  receivedAt: Date;
+  /** The Meter's lifetime cumulative total in gallons at this Reading. */
+  consumption: number;
+  rssi: number | null;
+  snr: number | null;
+}
+
 export interface AdminStore {
   /** Whether the SDR has ever heard this Meter, there being nothing to administer otherwise. */
   hasMeter(meterId: bigint): Promise<boolean>;
   /** Every Meter with what the last day says about it, the window measured back from `now`. */
   meters(now: Date): Promise<MeterStats[]>;
+  /** Where the Admin has written the Meter down as being, null while nothing is written. */
+  address(meterId: bigint): Promise<string | null>;
+  /** Writes down where the Meter is, or rubs it out when given nothing. */
+  setAddress(input: { meterId: bigint; address: string | null }): Promise<void>;
   activeClaimCode(meterId: bigint): Promise<{ createdAt: Date } | null>;
   /** Stores the new code and stops every older one claiming, leaving their Grants alone. */
   rotateClaimCode(input: { meterId: bigint; code: string; now: Date }): Promise<void>;
+  /** The Meter's latest Readings, newest first, at most `limit` of them. */
+  readings(meterId: bigint, limit: number): Promise<StoredReading[]>;
   grants(meterId: bigint): Promise<AdminGrant[]>;
   /** Whether this Meter had that Grant still to revoke. */
   revokeGrant(input: { grantId: string; meterId: bigint; now: Date }): Promise<boolean>;
@@ -32,6 +48,8 @@ export interface AdminStore {
 /** One Meter's latest Reading and what the last 24 hours of Readings amount to. */
 export interface MeterStats {
   id: bigint;
+  /** Where the Admin has written the Meter down as being, null while nothing is written. */
+  address: string | null;
   /** Null until the SDR has heard the Meter at all, which leaves nothing to judge it by. */
   latest: {
     receivedAt: Date;
@@ -77,6 +95,8 @@ export function signIn(
 /** How the Admin list describes one Meter: what it last reported, and how the last day went. */
 export interface MeterSummary {
   id: bigint;
+  /** Where the Admin has written the Meter down as being, null while nothing is written. */
+  address: string | null;
   /** Null until the SDR has heard the Meter at all, which leaves nothing to judge it by. */
   lastHeardAt: Date | null;
   health: MeterHealth | null;
@@ -102,8 +122,9 @@ export interface MeterSummary {
 export async function meterSummaries(store: AdminStore, now: Date): Promise<MeterSummary[]> {
   const meters = await store.meters(now);
 
-  return meters.map(({ id, latest, consumptionBefore, readings, rssi, snr, devices }) => ({
+  return meters.map(({ id, address, latest, consumptionBefore, readings, rssi, snr, devices }) => ({
     id,
+    address,
     lastHeardAt: latest?.receivedAt ?? null,
     health: latest ? meterHealth(latest.receivedAt, now) : null,
     activeLeak: latest ? activeLeakLevel(latest.activeLeak) : null,
@@ -118,6 +139,50 @@ export async function meterSummaries(store: AdminStore, now: Date): Promise<Mete
     snr,
     devices,
   }));
+}
+
+/** One Reading as the Admin page lists it, with what it added since the Reading before it. */
+export interface AdminReading {
+  id: string;
+  receivedAt: Date;
+  consumption: number;
+  rssi: number | null;
+  snr: number | null;
+  /** Gallons since the previous Reading, null for the oldest the Meter has, which has none behind it. */
+  usage: number | null;
+}
+
+/**
+ * The Meter's latest Readings with the Usage each one added. One more than asked for is read,
+ * so the oldest shown has a Consumption behind it to difference against.
+ */
+export async function recentReadings(
+  store: AdminStore,
+  { meterId, count }: { meterId: bigint; count: number },
+): Promise<AdminReading[]> {
+  const readings = await store.readings(meterId, count + 1);
+
+  return readings.slice(0, count).map((reading, index) => {
+    const before = readings[index + 1];
+
+    return {
+      id: String(reading.id),
+      receivedAt: reading.receivedAt,
+      consumption: reading.consumption,
+      rssi: reading.rssi,
+      snr: reading.snr,
+      usage: before ? reading.consumption - before.consumption : null,
+    };
+  });
+}
+
+/** A street line rather than a note, so anything past this is the Admin pasting by mistake. */
+const ADDRESS_LIMIT = 120;
+
+/** What the Admin typed, as one line, or null where they left it empty or cleared it. */
+export function parseAddress(value: string): string | null {
+  const address = value.replaceAll(/\s+/g, " ").trim().slice(0, ADDRESS_LIMIT).trim();
+  return address === "" ? null : address;
 }
 
 /** Issues a Claim Code for the Meter and returns it, the one time the Admin gets to read it. */

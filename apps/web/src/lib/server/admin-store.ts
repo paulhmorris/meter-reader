@@ -6,6 +6,7 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 /** One Meter with its latest Reading flattened alongside it, every Reading column null while it has none. */
 interface MeterRow {
   id: bigint;
+  address: string | null;
   receivedAt: Date | null;
   consumption: number | null;
   activeLeak: number | null;
@@ -46,6 +47,7 @@ export function prismaAdminStore(prisma: PrismaClient): AdminStore {
       const rows = await prisma.$queryRaw<MeterRow[]>`
         SELECT
           m.id,
+          m.address,
           l."receivedAt",
           l.consumption::float8 AS "consumption",
           l."activeLeak",
@@ -90,6 +92,7 @@ export function prismaAdminStore(prisma: PrismaClient): AdminStore {
 
       return rows.map((row) => ({
         id: row.id,
+        address: row.address,
         latest: latestOf(row),
         consumptionBefore: row.consumptionBefore,
         readings: row.readings,
@@ -97,6 +100,18 @@ export function prismaAdminStore(prisma: PrismaClient): AdminStore {
         snr: row.snr,
         devices: row.devices,
       }));
+    },
+
+    async address(meterId) {
+      const meter = await prisma.meter.findUnique({
+        where: { id: meterId },
+        select: { address: true },
+      });
+      return meter?.address ?? null;
+    },
+
+    async setAddress({ meterId, address }) {
+      await prisma.meter.update({ where: { id: meterId }, data: { address } });
     },
 
     async activeClaimCode(meterId) {
@@ -119,6 +134,20 @@ export function prismaAdminStore(prisma: PrismaClient): AdminStore {
         },
         { isolationLevel: "Serializable" },
       );
+    },
+
+    async readings(meterId, limit) {
+      const readings = await prisma.reading.findMany({
+        where: { meterId },
+        orderBy: [{ receivedAt: "desc" }, { id: "desc" }],
+        take: limit,
+        select: { id: true, receivedAt: true, consumption: true, rssi: true, snr: true },
+      });
+
+      return readings.map((reading) => ({
+        ...reading,
+        consumption: reading.consumption.toNumber(),
+      }));
     },
 
     async grants(meterId) {

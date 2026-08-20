@@ -10,6 +10,10 @@ Lets neighbours view water usage from their own Neptune R900 meter, read over SD
 A physical Neptune R900 water meter, identified by the 32-bit `id` in its radio transmission.
 _Avoid_: Device, unit, sensor
 
+**Address**:
+Where a Meter is, written down by the Admin so that a leak can be traced to a neighbour. Free text, optional, and never shown to a neighbour.
+_Avoid_: Location, name, household, owner, label
+
 **Reading**:
 One decoded R900 transmission from a Meter, with the time it was received.
 _Avoid_: Sample, packet, message, datapoint
