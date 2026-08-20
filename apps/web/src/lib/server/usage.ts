@@ -20,6 +20,8 @@ export interface UsagePeriod {
   gallons: number;
   /** Understated or overstated, because a Reading near a boundary is missing. */
   partial: boolean;
+  /** Whether any Reading landed inside the period, rather than it being silence read as zero. */
+  heard: boolean;
 }
 
 /**
@@ -41,14 +43,23 @@ const STALE_AFTER_MS: Record<Granularity, number> = {
   month: 60 * 60 * 1000,
 };
 
+/**
+ * Whether the Consumption at an instant is known: either a Reading landed close enough before it,
+ * or the Readings either side of the silence agree that no water was used across it, which leaves
+ * nothing for the gap to have misattributed however long it ran.
+ */
 function trusted(
   boundary: Date,
-  reading: MeterReading | null,
+  { before, from }: Boundary,
   { to, staleAfterMs }: { to: Date; staleAfterMs: number },
 ): boolean {
+  if (before === null) return false;
+
   // The period holding to is still in progress, so its end is judged from to, not from the future.
   const instant = boundary > to ? to : boundary;
-  return reading !== null && instant.getTime() - reading.receivedAt.getTime() <= staleAfterMs;
+  if (instant.getTime() - before.receivedAt.getTime() <= staleAfterMs) return true;
+
+  return from !== null && from.consumption === before.consumption;
 }
 
 /**
@@ -83,7 +94,10 @@ export async function usageByPeriod(
     return {
       ...period,
       gallons: Math.round(gallons * 10) / 10,
-      partial: !trusted(period.start, before, limits) || !trusted(period.end, closing, limits),
+      heard: closing !== null && closing.receivedAt >= period.start,
+      partial:
+        !trusted(period.start, readings[index], limits) ||
+        !trusted(period.end, readings[index + 1], limits),
     };
   });
 }

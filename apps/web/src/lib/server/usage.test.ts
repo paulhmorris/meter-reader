@@ -87,6 +87,48 @@ describe("usageByPeriod", () => {
     expect(hour).toMatchObject({ gallons: 0, partial: false });
   });
 
+  it("trusts a boundary a long silence straddles when no water was used across it", async () => {
+    const [hour] = await usageByPeriod(
+      {
+        store: store([
+          ["2026-06-15T22:30:00Z", 1000],
+          ["2026-06-15T23:25:00Z", 1000],
+          ["2026-06-15T23:55:00Z", 1000],
+          ["2026-06-16T00:05:00Z", 1000],
+        ]),
+      },
+      {
+        meterId,
+        granularity: "hour",
+        from: new Date("2026-06-15T23:00:00Z"),
+        to: new Date("2026-06-16T00:30:00Z"),
+      },
+    );
+
+    expect(hour).toMatchObject({ gallons: 0, partial: false });
+  });
+
+  it("keeps a boundary Partial when water moved across the silence straddling it", async () => {
+    const [hour] = await usageByPeriod(
+      {
+        store: store([
+          ["2026-06-15T22:30:00Z", 1000],
+          ["2026-06-15T23:25:00Z", 1060],
+          ["2026-06-15T23:55:00Z", 1060],
+          ["2026-06-16T00:05:00Z", 1060],
+        ]),
+      },
+      {
+        meterId,
+        granularity: "hour",
+        from: new Date("2026-06-15T23:00:00Z"),
+        to: new Date("2026-06-16T00:30:00Z"),
+      },
+    );
+
+    expect(hour).toMatchObject({ gallons: 60, partial: true });
+  });
+
   it("marks a period Partial when the Reading opening it is too old to vouch for", async () => {
     const [hour] = await usageByPeriod(
       {
@@ -160,6 +202,20 @@ describe("usageByPeriod", () => {
     );
 
     expect(silent).toMatchObject({ gallons: 0, partial: true });
+  });
+
+  it("says whether a period was heard in at all, so silence is not averaged as zero", async () => {
+    const hours = await usageByPeriod(
+      { store: evening },
+      {
+        meterId,
+        granularity: "hour",
+        from: new Date("2026-06-15T23:00:00Z"),
+        to: new Date("2026-06-16T01:30:00Z"),
+      },
+    );
+
+    expect(hours.map((hour) => hour.heard)).toEqual([true, true, false]);
   });
 
   it("marks a period the Meter was not yet heard from as Partial", async () => {

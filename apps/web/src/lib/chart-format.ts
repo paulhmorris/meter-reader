@@ -7,10 +7,10 @@ const format = (options: Intl.DateTimeFormatOptions) =>
 
 const clock = format({ hour: "numeric" });
 const dayAndMonth = format({ month: "numeric", day: "numeric" });
-const dayNamed = format({ weekday: "long", month: "long", day: "numeric" });
+const dayNamed = format({ weekday: "short", month: "short", day: "numeric" });
 const dayShort = format({ month: "short", day: "numeric" });
 const monthShort = format({ month: "short" });
-const monthNamed = format({ month: "long", year: "numeric" });
+const monthNamed = format({ month: "short", year: "numeric" });
 
 /** What the axis calls a period: short enough that a month of them still fits. */
 export function tick(granularity: Granularity, start: Date): string {

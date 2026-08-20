@@ -18,7 +18,7 @@
     today: "Today",
     "7d": "7 days",
     "30d": "30 days",
-    "12mo": "12 months",
+    "12mo": "1 year",
   };
 
   /** What the heading calls a preset, where there is room for more than a button holds. */
@@ -26,7 +26,7 @@
     today: "Today",
     "7d": "The last 7 days",
     "30d": "The last 30 days",
-    "12mo": "The last 12 months",
+    "12mo": "The last year",
   };
 
   const BY: Record<Granularity, string> = {
@@ -70,16 +70,15 @@
   const total = $derived(data.chart.reduce((sum, period) => sum + period.gallons, 0));
 
   /**
-   * What an average may be taken over: a Partial period understates it, and the period still
-   * running is a fraction of one counted as a whole.
+   * What an average is taken over: every period the Meter was heard in, Partial or not, since its
+   * Usage is water that was really used. Only silence and the period still running are left out,
+   * the one having no figure to average and the other being a fraction of one.
    */
-  const settled = $derived(
-    data.chart.filter((period) => !period.partial && period.end <= range.to),
-  );
+  const counted = $derived(data.chart.filter((period) => period.heard && period.end <= range.to));
 
   const average = $derived.by(() => {
-    if (settled.length === 0) return null;
-    const mean = settled.reduce((sum, period) => sum + period.gallons, 0) / settled.length;
+    if (counted.length === 0) return null;
+    const mean = counted.reduce((sum, period) => sum + period.gallons, 0) / counted.length;
     return `${gallons.format(mean)} gal per ${PER[range.granularity]} on average`;
   });
 
