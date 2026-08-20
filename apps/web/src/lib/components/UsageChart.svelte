@@ -9,7 +9,7 @@
 </script>
 
 <script lang="ts">
-  import { BarChart, Bars, Tooltip } from "layerchart";
+  import { BarChart, Bars, Text, Tooltip } from "layerchart";
   import { cubicOut } from "svelte/easing";
   import { goto } from "$app/navigation";
   import { periodName, tick } from "$lib/chart-format.js";
@@ -51,8 +51,9 @@
 
   /**
    * Bars land in the same bands whichever subset they come from, so tone can be a layer per tone.
-   * Keying by period rather than by index retires the old window's bars outright, so a new window
-   * grows up from the axis instead of the old heights crawling to the new ones.
+   * Keying by the period itself rather than by index retires the old window's bars outright, so a
+   * new window grows up from the axis instead of the old heights crawling to the new ones. The end
+   * is in the key as well as the start, so a day and the hour it opens with never share a bar.
    */
   const layer = {
     radius: 3,
@@ -60,7 +61,7 @@
     motion: still ? ("none" as const) : ({ y: grow, height: grow } as const),
     initialHeight: 0,
     tooltip: true,
-    key: (period: ChartPeriod) => period.start.getTime(),
+    key: (period: ChartPeriod) => `${period.start.getTime()}-${period.end.getTime()}`,
   };
 
   /**
@@ -77,6 +78,12 @@
       goto(drillHref(period), { replaceState: true, noScroll: true });
   }
 </script>
+
+<!-- The leftmost label sits to the right of its tick rather than centred on it, so a wide one
+     cannot reach back over the y axis's own labels. -->
+{#snippet xTickLabel({ props, index }: { props: any; index: number })}
+  <Text {...props} textAnchor={index === 0 ? "start" : props.textAnchor} />
+{/snippet}
 
 <figure class="m-0">
   {#if !anyUsage}
@@ -105,6 +112,7 @@
             format: (value: Date) => tick(granularity, value),
             tickLength: 0,
             ticks: 6,
+            tickLabel: xTickLabel,
           },
           yAxis: { format: (value: number) => gallons.format(value), tickLength: 0, ticks: 4 },
           grid: { class: "stroke-chart-grid" },
@@ -144,9 +152,7 @@
                   <p class="mt-1 text-xs text-danger">The meter reported a leak during this time</p>
                 {/if}
                 {#if data.partial}
-                  <p class="mt-1 max-w-52 text-xs text-muted-foreground">
-                    Readings are missing around then, so this is too low or too high
-                  </p>
+                  <p class="mt-1 text-xs text-muted-foreground">Incomplete data</p>
                 {/if}
               </div>
             {/snippet}
@@ -182,7 +188,6 @@
   </div>
 
   <figcaption class="mt-3 space-y-1.5 text-xs text-muted-foreground">
-    <p>Drag across the chart to read each one{drillHref ? ", or tap a bar to open it" : ""}.</p>
     {#if anyLeaking}
       <p class="flex items-start gap-2">
         <span class="mt-0.5 size-3 shrink-0 rounded-sm bg-chart-leak" aria-hidden="true"></span>
@@ -195,8 +200,7 @@
           class="mt-0.5 size-3 shrink-0 rounded-sm border border-border bg-background bg-[repeating-linear-gradient(45deg,var(--foreground)_0_2px,transparent_2px_5px)] opacity-70"
           aria-hidden="true"
         ></span>
-        The meter went unheard from around these times, so the water shown is too low or too high. It
-        is what the readings we do have add up to — we would rather show that than guess.
+        Incomplete data
       </p>
     {/if}
   </figcaption>
