@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { stampedAt } from "$lib/admin-format.js";
   import MeterHealthBadge from "$lib/components/MeterHealthBadge.svelte";
   import { Badge } from "$lib/components/ui/badge/index.js";
   import { Card } from "$lib/components/ui/card/index.js";
@@ -10,15 +11,10 @@
 
   let { data }: { data: PageData } = $props();
 
-  const heardAt = new Intl.DateTimeFormat(undefined, {
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-    timeZone: "America/Chicago",
+  const decimal = new Intl.NumberFormat(undefined, {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
   });
-
-  const decimal = new Intl.NumberFormat(undefined, { maximumFractionDigits: 1 });
 
   const LEAK = {
     intermittent: "Leak · bursts",
@@ -75,14 +71,28 @@
     { column: "devices", label: "Devices", numeric: true },
   ];
 
-  let sort = $state<{ column: Column; descending: boolean }>({
-    column: "health",
-    descending: true,
-  });
+  /** How the table stands until the Admin sorts it: named first, heard most recently, heard best. */
+  function byDefault(a: Meter, b: Meter): number {
+    const named = Number(b.address !== null) - Number(a.address !== null);
+    if (named !== 0) return named;
+
+    const heard = (b.lastHeardAt?.getTime() ?? 0) - (a.lastHeardAt?.getTime() ?? 0);
+    if (heard !== 0) return heard;
+
+    const [aLevel, bLevel] = [a.rssi ?? UNHEARD_LEVEL, b.rssi ?? UNHEARD_LEVEL];
+    if (aLevel !== bLevel) return aLevel > bLevel ? -1 : 1;
+
+    return Number(a.id) - Number(b.id);
+  }
+
+  let sort = $state<{ column: Column; descending: boolean } | null>(null);
 
   const sorted = $derived.by(() => {
-    const rank = RANK[sort.column];
-    const direction = sort.descending ? -1 : 1;
+    const chosen = sort;
+    if (chosen === null) return [...data.meters].sort(byDefault);
+
+    const rank = RANK[chosen.column];
+    const direction = chosen.descending ? -1 : 1;
 
     return [...data.meters].sort((a, b) => {
       if (rank(a) !== rank(b)) return rank(a) > rank(b) ? direction : -direction;
@@ -91,7 +101,7 @@
   });
 
   function sortBy(column: Column) {
-    sort = { column, descending: sort.column === column ? !sort.descending : true };
+    sort = { column, descending: sort?.column === column ? !sort.descending : true };
   }
 </script>
 
@@ -109,10 +119,10 @@
         <Table.Header>
           <Table.Row class="hover:bg-transparent">
             {#each HEADINGS as { column, label, hint, numeric } (column)}
-              {@const chosen = sort.column === column}
+              {@const chosen = sort?.column === column}
               <Table.Head
                 class="h-auto whitespace-nowrap px-3 py-2"
-                aria-sort={chosen ? (sort.descending ? "descending" : "ascending") : "none"}
+                aria-sort={chosen ? (sort?.descending ? "descending" : "ascending") : "none"}
               >
                 <button
                   type="button"
@@ -127,7 +137,7 @@
                   {/if}
                   {#if !chosen}
                     <ChevronsUpDown class="size-3 opacity-60" aria-hidden="true" />
-                  {:else if sort.descending}
+                  {:else if sort?.descending}
                     <ArrowDown class="size-3" aria-hidden="true" />
                   {:else}
                     <ArrowUp class="size-3" aria-hidden="true" />
@@ -164,7 +174,7 @@
                 </div>
               </Table.Cell>
               <Table.Cell class="whitespace-nowrap px-3 py-3 text-muted-foreground">
-                {meter.lastHeardAt ? heardAt.format(meter.lastHeardAt) : "—"}
+                {meter.lastHeardAt ? stampedAt(meter.lastHeardAt) : "—"}
               </Table.Cell>
               <Table.Cell class="whitespace-nowrap px-3 py-3 tabular-nums">
                 {#if meter.rssi === null}
@@ -172,11 +182,6 @@
                   >
                 {:else}
                   {decimal.format(meter.rssi)} dBm
-                  {#if meter.snr !== null}
-                    <span class="block text-xs text-muted-foreground">
-                      {decimal.format(meter.snr)} dB SNR
-                    </span>
-                  {/if}
                 {/if}
               </Table.Cell>
               <Table.Cell class="px-3 py-3 text-right tabular-nums">{meter.readings}</Table.Cell>

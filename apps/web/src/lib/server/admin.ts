@@ -22,6 +22,8 @@ export interface StoredReading {
   receivedAt: Date;
   /** The Meter's lifetime cumulative total in gallons at this Reading. */
   consumption: number;
+  /** The `leaknow` flag as the Meter reported it at this Reading. */
+  activeLeak: number;
   rssi: number | null;
   snr: number | null;
 }
@@ -146,6 +148,7 @@ export interface AdminReading {
   id: string;
   receivedAt: Date;
   consumption: number;
+  activeLeak: ActiveLeakLevel;
   rssi: number | null;
   snr: number | null;
   /** Gallons since the previous Reading, null for the oldest the Meter has, which has none behind it. */
@@ -169,6 +172,7 @@ export async function recentReadings(
       id: String(reading.id),
       receivedAt: reading.receivedAt,
       consumption: reading.consumption,
+      activeLeak: activeLeakLevel(reading.activeLeak),
       rssi: reading.rssi,
       snr: reading.snr,
       usage: before ? reading.consumption - before.consumption : null,

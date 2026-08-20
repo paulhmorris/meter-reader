@@ -229,6 +229,7 @@ describe("recentReadings", () => {
       id: BigInt(id),
       receivedAt: new Date(Date.UTC(2026, 7, 19, id)),
       consumption,
+      activeLeak: 0,
       rssi: -70.5,
       snr: 12,
     };

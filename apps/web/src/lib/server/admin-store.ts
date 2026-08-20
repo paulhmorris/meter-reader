@@ -141,7 +141,14 @@ export function prismaAdminStore(prisma: PrismaClient): AdminStore {
         where: { meterId },
         orderBy: [{ receivedAt: "desc" }, { id: "desc" }],
         take: limit,
-        select: { id: true, receivedAt: true, consumption: true, rssi: true, snr: true },
+        select: {
+          id: true,
+          receivedAt: true,
+          consumption: true,
+          activeLeak: true,
+          rssi: true,
+          snr: true,
+        },
       });
 
       return readings.map((reading) => ({

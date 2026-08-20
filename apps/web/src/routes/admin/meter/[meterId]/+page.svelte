@@ -1,5 +1,7 @@
 <script lang="ts">
   import { enhance } from "$app/forms";
+  import { stampedAt } from "$lib/admin-format.js";
+  import { Badge } from "$lib/components/ui/badge/index.js";
   import * as AlertDialog from "$lib/components/ui/alert-dialog/index.js";
   import { Button, buttonVariants } from "$lib/components/ui/button/index.js";
   import { Card, CardHeader, CardTitle } from "$lib/components/ui/card/index.js";
@@ -12,21 +14,19 @@
 
   let confirming = $state(false);
 
-  const at = new Intl.DateTimeFormat(undefined, {
-    dateStyle: "medium",
-    timeStyle: "short",
-    timeZone: "America/Chicago",
+  const decimal = new Intl.NumberFormat(undefined, {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
   });
 
-  const heardAt = new Intl.DateTimeFormat(undefined, {
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-    timeZone: "America/Chicago",
-  });
+  const LEAK = {
+    intermittent: "Leak · bursts",
+    continuous: "Leak · nonstop",
+    unknown: "Leak",
+  };
 
-  const decimal = new Intl.NumberFormat(undefined, { maximumFractionDigits: 1 });
+  /** What the Meter last reported, which is what the badges at the top stand for. */
+  const latest = $derived(data.readings[0] ?? null);
 
   /** What the server keeps of an Address, so the field stops where the stored value would. */
   const ADDRESS_LIMIT = 120;
@@ -49,6 +49,21 @@
         See it as a neighbour does
       </a>
     </div>
+
+    {#if latest}
+      <div class="flex flex-wrap items-center gap-2">
+        {#if latest.activeLeak !== "none"}
+          <Badge variant="outline" class="border-danger/40 bg-danger/5 text-danger">
+            {LEAK[latest.activeLeak]}
+          </Badge>
+        {/if}
+        {#if latest.rssi !== null}
+          <Badge variant="outline" class="tabular-nums text-muted-foreground">
+            {decimal.format(latest.rssi)} dBm
+          </Badge>
+        {/if}
+      </div>
+    {/if}
   </header>
 
   <Card>
@@ -68,14 +83,6 @@
       />
       <Button type="submit" variant="outline">Save</Button>
     </form>
-
-    <p class="px-4 text-xs text-muted-foreground">
-      {#if form?.addressSaved}
-        Saved. Only you see it — a neighbour never does.
-      {:else}
-        Only you see it — a neighbour never does. Empty it to rub it out.
-      {/if}
-    </p>
   </Card>
 
   <Card>
@@ -96,7 +103,7 @@
         </p>
       {:else if data.claimCode}
         <p class="text-sm text-muted-foreground">
-          Issued {at.format(data.claimCode.createdAt)} and still claimable.
+          Issued {stampedAt(data.claimCode.createdAt)} and still claimable.
         </p>
       {:else}
         <p class="text-sm text-muted-foreground">No code is claimable for this meter.</p>
@@ -155,7 +162,7 @@
                   {grant.device ?? "A device that did not say what it was"}
                 </p>
                 <p class="mt-0.5 text-xs text-muted-foreground">
-                  Claimed {at.format(grant.createdAt)}
+                  Claimed {stampedAt(grant.createdAt)}
                 </p>
               </Table.Cell>
               <Table.Cell class="px-4 py-3 text-right">
@@ -183,43 +190,22 @@
         <Table.Header>
           <Table.Row class="hover:bg-transparent">
             <Table.Head class="px-4">Heard</Table.Head>
-            <Table.Head class="px-4 text-right">Total</Table.Head>
             <Table.Head class="px-4 text-right">Usage</Table.Head>
-            <Table.Head class="px-4 text-right">Signal</Table.Head>
           </Table.Row>
         </Table.Header>
         <Table.Body>
           {#each data.readings as reading (reading.id)}
             <Table.Row>
               <Table.Cell class="px-4 py-2.5 text-muted-foreground">
-                {heardAt.format(reading.receivedAt)}
-              </Table.Cell>
-              <Table.Cell class="px-4 py-2.5 text-right tabular-nums">
-                {decimal.format(reading.consumption)}
+                {stampedAt(reading.receivedAt)}
               </Table.Cell>
               <Table.Cell class="px-4 py-2.5 text-right tabular-nums">
                 {reading.usage === null ? "—" : decimal.format(reading.usage)}
-              </Table.Cell>
-              <Table.Cell class="px-4 py-2.5 text-right tabular-nums">
-                {#if reading.rssi === null}
-                  <span class="text-muted-foreground" title="The receiver reports no levels">—</span
-                  >
-                {:else}
-                  {decimal.format(reading.rssi)} dBm
-                  {#if reading.snr !== null}
-                    <span class="block text-xs text-muted-foreground">
-                      {decimal.format(reading.snr)} dB SNR
-                    </span>
-                  {/if}
-                {/if}
               </Table.Cell>
             </Table.Row>
           {/each}
         </Table.Body>
       </Table.Root>
-      <p class="px-4 text-xs text-muted-foreground">
-        Gallons. Usage is what each reading added over the one before it.
-      </p>
     {:else}
       <p class="px-4 text-sm text-muted-foreground">The receiver has not heard this meter yet.</p>
     {/if}
