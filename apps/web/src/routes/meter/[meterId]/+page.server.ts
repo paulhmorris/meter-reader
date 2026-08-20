@@ -39,6 +39,8 @@ export const load: PageServerLoad = async ({ params, url, locals }) => {
 
   return {
     meterId: String(meterId),
+    /** An Admin reading a neighbour's page is offered the way back to their own view of it. */
+    admin: locals.admin,
     reading,
     health,
     ...meterEvents,

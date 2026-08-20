@@ -214,30 +214,29 @@
       </p>
     {/if}
     {#if anyPartial}
-      <p class="flex items-start gap-2">
-        <span
-          class="mt-0.5 size-3 shrink-0 rounded-sm border border-border bg-[repeating-linear-gradient(45deg,var(--muted-foreground)_0_1.5px,var(--background)_1.5px_4px)]"
-          aria-hidden="true"
-        ></span>
-        <span>
+      <div>
+        <p class="flex items-center gap-2">
+          <span
+            class="size-3 shrink-0 rounded-sm border border-border bg-[repeating-linear-gradient(45deg,var(--muted-foreground)_0_1.5px,var(--background)_1.5px_4px)]"
+            aria-hidden="true"
+          ></span>
           Possibly inaccurate
           <button
             type="button"
             aria-expanded={helpOpen}
             aria-label="Why a period can be inaccurate"
             onclick={() => (helpOpen = !helpOpen)}
-            class="ml-0.5 inline-flex size-4 items-center justify-center rounded-full border border-border align-[-2px] leading-none hover:bg-accent"
+            class="flex size-4 shrink-0 items-center justify-center rounded-full border border-border leading-none hover:bg-accent"
           >
             ?
           </button>
-          {#if helpOpen}
-            <span class="mt-1 block">
-              The total is right — it is how much of it lands in each {PER[granularity]} that may be
-              a little off.
-            </span>
-          {/if}
-        </span>
-      </p>
+        </p>
+        {#if helpOpen}
+          <p class="mt-1 pl-5">
+            Totals are correct, but the specific {PER[granularity]} might be low or high.
+          </p>
+        {/if}
+      </div>
     {/if}
   </figcaption>
 </figure>

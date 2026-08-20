@@ -36,6 +36,12 @@
 
 <div class="space-y-6">
   <header class="space-y-3">
+    <div class="flex flex-wrap items-center justify-between gap-3">
+      <h1 class="text-lg font-semibold tabular-nums tracking-tight">Meter {data.meterId}</h1>
+      <a href="/meter/{data.meterId}" class={buttonVariants({ variant: "outline", size: "sm" })}>
+        Neighbor view
+      </a>
+    </div>
     <a
       href="/admin"
       class="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground"
@@ -43,12 +49,6 @@
       <ArrowLeft class="size-3.5" aria-hidden="true" />
       All meters
     </a>
-    <div class="flex flex-wrap items-center justify-between gap-3">
-      <h1 class="text-lg font-semibold tabular-nums tracking-tight">Meter {data.meterId}</h1>
-      <a href="/meter/{data.meterId}" class={buttonVariants({ variant: "outline", size: "sm" })}>
-        See it as a neighbour does
-      </a>
-    </div>
 
     {#if latest}
       <div class="flex flex-wrap items-center gap-2">

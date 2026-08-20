@@ -6,6 +6,7 @@
   import MeterHealthBadge from "$lib/components/MeterHealthBadge.svelte";
   import StatCard from "$lib/components/StatCard.svelte";
   import { Badge } from "$lib/components/ui/badge/index.js";
+  import { buttonVariants } from "$lib/components/ui/button/index.js";
   import UsageChart, { type ChartPeriod } from "$lib/components/UsageChart.svelte";
   import type { Granularity } from "$lib/granularity.js";
   import LeakWarnings from "$lib/LeakWarnings.svelte";
@@ -94,11 +95,21 @@
 <svelte:head><title>Water usage · Meter {data.meterId}</title></svelte:head>
 
 <div class="space-y-6">
-  <header class="flex items-center justify-between gap-3">
+  <header class="flex flex-wrap items-center justify-between gap-3">
     <h1 class="text-lg font-semibold tracking-tight">Meter {data.meterId}</h1>
-    {#if data.health}
-      <MeterHealthBadge health={data.health} lastHeardAt={data.reading?.receivedAt ?? null} />
-    {/if}
+    <div class="flex items-center gap-2">
+      {#if data.health}
+        <MeterHealthBadge health={data.health} lastHeardAt={data.reading?.receivedAt ?? null} />
+      {/if}
+      {#if data.admin}
+        <a
+          href="/admin/meter/{data.meterId}"
+          class={buttonVariants({ variant: "outline", size: "sm" })}
+        >
+          Admin view
+        </a>
+      {/if}
+    </div>
   </header>
 
   {#if data.reading}
