@@ -36,9 +36,8 @@
     month: "by month",
   };
 
-  /** What an average is worth saying per: an average hour of one day is not worth the line. */
-  const PER: Record<Granularity, string | null> = {
-    hour: null,
+  const PER: Record<Granularity, string> = {
+    hour: "hour",
     day: "day",
     week: "week",
     month: "month",
@@ -70,10 +69,18 @@
   /** The one figure the page leads with, which is the stretch the chart is on totted up. */
   const total = $derived(data.chart.reduce((sum, period) => sum + period.gallons, 0));
 
+  /**
+   * What an average may be taken over: a Partial period understates it, and the period still
+   * running is a fraction of one counted as a whole.
+   */
+  const settled = $derived(
+    data.chart.filter((period) => !period.partial && period.end <= range.to),
+  );
+
   const average = $derived.by(() => {
-    const per = PER[range.granularity];
-    if (per === null || data.chart.length === 0) return null;
-    return `${gallons.format(total / data.chart.length)} gal per ${per} on average`;
+    if (settled.length === 0) return null;
+    const mean = settled.reduce((sum, period) => sum + period.gallons, 0) / settled.length;
+    return `${gallons.format(mean)} gal per ${PER[range.granularity]} on average`;
   });
 
   const drillHref = $derived.by(() => {
@@ -113,6 +120,12 @@
 
     <!-- Chart navigation replaces rather than stacks: Back leaves the page, not the last filter. -->
     <section class="space-y-3" data-sveltekit-replacestate data-sveltekit-noscroll>
+      <StatCard
+        label={range.drilled ? stretch : PRESET_NAMES[range.preset]}
+        gallons={total}
+        hint={average}
+      />
+
       <nav aria-label="How much to show" class="flex flex-wrap gap-2">
         {#each Object.entries(PRESET_NAMES) as [preset, name] (preset)}
           {@const chosen = preset === range.preset && !range.drilled}
@@ -165,12 +178,6 @@
           Up to when we last heard from the meter, not to now
         </p>
       {/if}
-
-      <StatCard
-        label={range.drilled ? stretch : PRESET_NAMES[range.preset]}
-        gallons={total}
-        hint={average}
-      />
 
       <UsageChart periods={data.chart} granularity={range.granularity} {drillHref} />
     </section>

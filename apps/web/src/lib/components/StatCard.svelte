@@ -33,15 +33,15 @@
   }
 </script>
 
-<Card class="p-5">
+<Card class="gap-0 p-3.5">
   <p class="text-xs font-medium uppercase tracking-wide text-muted-foreground">{label}</p>
-  <p class="mt-1 flex items-baseline gap-1.5">
-    <span class="text-4xl font-semibold tabular-nums" use:countUp={total}>
+  <p class="mt-0.5 flex items-baseline gap-1.5">
+    <span class="text-3xl font-semibold tabular-nums" use:countUp={total}>
       {gallons.format(total)}
     </span>
     <span class="text-sm text-muted-foreground">gal</span>
   </p>
   {#if hint}
-    <p class="mt-1 text-xs text-muted-foreground">{hint}</p>
+    <p class="mt-0.5 text-xs text-muted-foreground">{hint}</p>
   {/if}
 </Card>

@@ -197,7 +197,7 @@
     {#if anyPartial}
       <p class="flex items-start gap-2">
         <span
-          class="mt-0.5 size-3 shrink-0 rounded-sm border border-border bg-background bg-[repeating-linear-gradient(45deg,var(--foreground)_0_2px,transparent_2px_5px)] opacity-70"
+          class="mt-0.5 size-3 shrink-0 rounded-sm border border-border bg-[repeating-linear-gradient(45deg,var(--muted-foreground)_0_1.5px,var(--background)_1.5px_4px)]"
           aria-hidden="true"
         ></span>
         Incomplete data
