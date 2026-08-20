@@ -51,9 +51,14 @@ Four marks have to stay distinguishable in both themes, and the tokens for them 
   one an hour to 60 days, one a Chicago day to a year — which lands a Heartbeat before a
   midnight. Past a year only one Reading a Monday week survives, which a week boundary is and
   the first of a month is not, so months that old read Partial, which is what they are.
-- **The Admin table says less than the meter page does.** `MeterHealthBadge` takes `short`, and the
-  Admin list uses it, because a column has room for "Stale" and not for the sentence a neighbour
-  reading one meter gets.
+- **The Admin table says less per Meter than the meter page does, about more of them.** It carries a
+  column per statistic — Signal, Readings and Usage over the last 24 hours, Consumption, Leak
+  History, the backflow and no-use flags, and how many devices hold a Grant — and every one of them
+  sorts. `MeterHealthBadge` takes `short`, and the Admin list uses it, because a column has room for
+  "Stale" and not for the sentence a neighbour reading one meter gets.
+- **The Admin list is the one wide surface.** The root layout gives `/admin` `max-w-7xl` against the
+  `max-w-2xl` every other page gets; narrower than that, the table scrolls inside its own card
+  rather than the page scrolling sideways.
 - **A dialog's buttons are portalled out of any form they sit in.** The Claim Code confirmation
   submits by `form="issue-code"` id rather than by containment.
 

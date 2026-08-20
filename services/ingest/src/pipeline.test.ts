@@ -29,7 +29,12 @@ const r900 = Buffer.from(
     nouse: 0,
   }),
 );
-const transmitted: R900Reading = { meterId: 1234567n, consumption: "123.4", flags: quiet };
+const transmitted: R900Reading = {
+  meterId: 1234567n,
+  consumption: "123.4",
+  flags: quiet,
+  signal: { rssi: null, snr: null },
+};
 
 const endpoint: PushEndpoint = {
   id: "one",

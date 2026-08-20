@@ -31,8 +31,14 @@ const LEAK_GALLONS_PER_HOUR = 9;
 interface SeedReading {
   consumption: number;
   activeLeak: number;
+  rssi: number;
+  snr: number;
   receivedAt: Date;
 }
+
+/** Levels wander around what a meter a few houses away reads, so the Admin list has one to sort by. */
+const RSSI_DBM = -7.5;
+const SNR_DB = 18;
 
 const ZONE = "America/Chicago";
 const STEP_MS = 15 * MINUTE_MS;
@@ -93,9 +99,13 @@ function readings(): SeedReading[] {
 
     if (silent(at) || !survivesPruning(at)) continue;
 
+    const wander = Math.sin(at / (3 * HOUR_MS));
+
     seeded.push({
       consumption: Math.round(consumption * 10) / 10,
       activeLeak: leaking(at) ? 1 : 0,
+      rssi: Math.round((RSSI_DBM + wander * 2) * 10) / 10,
+      snr: Math.round((SNR_DB + wander * 3) * 10) / 10,
       receivedAt: new Date(at),
     });
   }
@@ -118,6 +128,8 @@ async function main(): Promise<void> {
       leakHistory: 2,
       backflow: 0,
       noUse: 0,
+      rssi: reading.rssi,
+      snr: reading.snr,
       receivedAt: reading.receivedAt,
     })),
   });

@@ -10,12 +10,21 @@ export interface R900Flags {
   noUse: number;
 }
 
+/** How well the receiver heard one transmission. Only present when rtl_433 reports levels (`-M level`). */
+export interface R900Signal {
+  /** Received signal strength in dBm. */
+  rssi: number | null;
+  /** Signal-to-noise ratio in dB. */
+  snr: number | null;
+}
+
 /** One decoded R900 transmission, with Consumption already normalised to gallons. */
 export interface R900Reading {
   meterId: bigint;
   /** Gallons, to one decimal place, as a string so no float artifact reaches Postgres. */
   consumption: string;
   flags: R900Flags;
+  signal: R900Signal;
 }
 
 /** rtl_433 names the R900 decoder's model this way; anything else shares the topic by accident. */
@@ -25,6 +34,8 @@ const MAX_FLAG = 0xff;
 
 const count = v.pipe(v.number(), v.safeInteger(), v.minValue(0));
 const flag = v.pipe(count, v.maxValue(MAX_FLAG));
+/** A level in dB, absent from every payload rtl_433 sends without `-M level`. */
+const level = v.optional(v.pipe(v.number(), v.finite()));
 
 /** rtl_433 sends more fields than a Reading needs, so unknown keys are left alone. */
 const transmission = v.pipe(
@@ -36,11 +47,14 @@ const transmission = v.pipe(
     leak: flag,
     backflow: flag,
     nouse: flag,
+    rssi: level,
+    snr: level,
   }),
-  v.transform(({ id, consumption, leaknow, leak, backflow, nouse }): R900Reading => ({
+  v.transform(({ id, consumption, leaknow, leak, backflow, nouse, rssi, snr }): R900Reading => ({
     meterId: BigInt(id),
     consumption: (consumption / 10).toFixed(1),
     flags: { activeLeak: leaknow, leakHistory: leak, backflow, noUse: nouse },
+    signal: { rssi: rssi ?? null, snr: snr ?? null },
   })),
 );
 

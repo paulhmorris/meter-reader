@@ -46,6 +46,8 @@ export function prismaReadingStore(prisma: PrismaClient): ReadingStore {
             leakHistory: reading.flags.leakHistory,
             backflow: reading.flags.backflow,
             noUse: reading.flags.noUse,
+            rssi: reading.signal.rssi,
+            snr: reading.signal.snr,
             receivedAt,
           },
         }),

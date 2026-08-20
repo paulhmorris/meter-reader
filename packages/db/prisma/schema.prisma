@@ -30,6 +30,10 @@ model Reading {
   leakHistory Int      @db.SmallInt
   backflow    Int      @db.SmallInt
   noUse       Int      @db.SmallInt
+  /// Received signal strength in dBm, null unless rtl_433 is reporting levels (`-M level`).
+  rssi        Float?
+  /// Signal-to-noise ratio in dB, null unless rtl_433 is reporting levels.
+  snr         Float?
   receivedAt  DateTime
 
   @@index([meterId, receivedAt])

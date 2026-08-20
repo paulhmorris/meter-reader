@@ -50,7 +50,9 @@ Both processes read a single `.env` at the repo root: `apps/web` loads it in `vi
 | `VAPID_PUBLIC_KEY`          | app, ingest  | no       | Public half of the VAPID pair browsers subscribe with. Blank and the app offers no leak warnings. |
 | `VAPID_PRIVATE_KEY`         | ingest       | no       | Private half, which signs each push. Blank and nothing is ever pushed.        |
 | `VAPID_SUBJECT`             | ingest       | with keys| Who the push services contact about this app: `mailto:you@example.com`. Ingest refuses to start without it once the keys are set. |
-| `ADDRESS_HEADER`            | app          | in prod  | Header carrying the client address behind a proxy. `CF-Connecting-IP` behind the tunnel; anything else in front must set it too. |
+| `ADDRESS_HEADER`            | app          | in prod  | Header carrying the client address behind a proxy. `X-Forwarded-For`, which both Caddy and cloudflared set; anything else in front must set it too. |
+
+The Signal columns on the Admin list are filled from rtl_433's `rssi` and `snr`, which it only publishes when it is run with `-M level`. Without that flag every Reading is stored with no Signal and the column reads `—`.
 
 Claim attempts are rate-limited per client address. Behind a reverse proxy, set adapter-node's `ADDRESS_HEADER` (and `XFF_DEPTH`) so the app sees the neighbour's address rather than the proxy's — otherwise every household shares one bucket.
 
@@ -100,17 +102,15 @@ The tunnel is half a dashboard job. In Cloudflare Zero Trust, under Networks →
 
 ### Reaching the app
 
-The app reads the client address from `CF-Connecting-IP` and adapter-node **fails the request** if that header is missing — a claim or an Admin sign-in without it is a 500, rather than a household silently sharing everyone else's rate-limit bucket. Anything put in front of the app has to set that header.
+The app reads the client address from `X-Forwarded-For` and adapter-node **fails the request** if that header is missing — a claim or an Admin sign-in without it is a 500, rather than a household silently sharing everyone else's rate-limit bucket. Anything put in front of the app has to set that header.
 
-Neighbours come through the tunnel, which sets it. `WEB_BIND` decides whether anything else can: left at loopback the app is unreachable from the network, and only the tunnel gets in.
+A reverse proxy sets it by default, and so does the tunnel. `WEB_BIND` decides what can reach the app: left at loopback it is unreachable from the network, and only the tunnel gets in.
 
 To also reach it from the LAN, give `WEB_BIND` an address a reverse proxy can dial and serve the **same hostname** as `ORIGIN` from split-horizon DNS. One hostname keeps `ORIGIN` single-valued, so form posts and cookies behave the same by either route — two hostnames would mean adapter-node rejecting every form post that did not arrive on the one in `ORIGIN`. In Caddy:
 
 ```
 meter.example.com {
-    reverse_proxy 192.168.1.10:3010 {
-        header_up CF-Connecting-IP {remote_host}
-    }
+    reverse_proxy 192.168.1.10:3010
 }
 ```
 

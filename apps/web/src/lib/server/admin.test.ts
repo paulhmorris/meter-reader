@@ -1,5 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
-import { issueClaimCode, meterSummaries, signIn, type AdminStore } from "./admin.js";
+import {
+  issueClaimCode,
+  meterSummaries,
+  signIn,
+  type AdminStore,
+  type MeterStats,
+} from "./admin.js";
 import { createRateLimiter } from "./rate-limit.js";
 
 const now = new Date("2026-08-19T12:00:00Z");
@@ -62,18 +68,48 @@ describe("signIn", () => {
 });
 
 describe("meterSummaries", () => {
+  function stats(overrides: Partial<MeterStats> = {}): MeterStats {
+    return {
+      id: 1n,
+      latest: {
+        receivedAt: new Date("2026-08-19T11:00:00Z"),
+        consumption: 481_320.5,
+        activeLeak: 0,
+        leakHistory: 0,
+        backflow: 0,
+        noUse: 0,
+      },
+      consumptionBefore: 481_200.5,
+      readings: 96,
+      rssi: -6.5,
+      snr: 18.25,
+      devices: 2,
+      ...overrides,
+    };
+  }
+
   it("says of every Meter when it was last heard, whether it is Stale and whether it leaks", async () => {
     const summaries = await meterSummaries(
       store({
         meters: async () => [
-          { id: 1n, latest: { receivedAt: new Date("2026-08-19T11:00:00Z"), activeLeak: 2 } },
-          { id: 2n, latest: { receivedAt: new Date("2026-08-16T12:00:00Z"), activeLeak: 0 } },
+          stats({ id: 1n, latest: { ...stats().latest!, activeLeak: 2 } }),
+          stats({
+            id: 2n,
+            latest: { ...stats().latest!, receivedAt: new Date("2026-08-16T12:00:00Z") },
+          }),
         ],
       }),
       now,
     );
 
-    expect(summaries).toEqual([
+    expect(
+      summaries.map(({ id, lastHeardAt, health, activeLeak }) => ({
+        id,
+        lastHeardAt,
+        health,
+        activeLeak,
+      })),
+    ).toEqual([
       {
         id: 1n,
         lastHeardAt: new Date("2026-08-19T11:00:00Z"),
@@ -89,12 +125,68 @@ describe("meterSummaries", () => {
     ]);
   });
 
-  it("shows a Meter never heard from rather than hiding it", async () => {
-    const summaries = await meterSummaries(
-      store({ meters: async () => [{ id: 1n, latest: null }] }),
+  it("carries the Meter's own flags, its Consumption and the last day's Usage", async () => {
+    const [summary] = await meterSummaries(
+      store({
+        meters: async () => [
+          stats({ latest: { ...stats().latest!, leakHistory: 2, backflow: 1, noUse: 0 } }),
+        ],
+      }),
       now,
     );
-    expect(summaries).toEqual([{ id: 1n, lastHeardAt: null, health: null, activeLeak: null }]);
+
+    expect(summary).toMatchObject({
+      leakHistory: "3–7 days",
+      leakHistoryBucket: 2,
+      backflow: true,
+      noUse: false,
+      consumption: 481_320.5,
+      usage: 120,
+      readings: 96,
+      rssi: -6.5,
+      snr: 18.25,
+      devices: 2,
+    });
+  });
+
+  it("leaves the last day's Usage unsaid where no Reading before it survives to difference against", async () => {
+    const [summary] = await meterSummaries(
+      store({ meters: async () => [stats({ consumptionBefore: null })] }),
+      now,
+    );
+
+    expect(summary.usage).toBeNull();
+    expect(summary.consumption).toBe(481_320.5);
+  });
+
+  it("shows a Meter never heard from rather than hiding it", async () => {
+    const summaries = await meterSummaries(
+      store({
+        meters: async () => [
+          stats({ latest: null, consumptionBefore: null, readings: 0, rssi: null, snr: null }),
+        ],
+      }),
+      now,
+    );
+
+    expect(summaries).toEqual([
+      {
+        id: 1n,
+        lastHeardAt: null,
+        health: null,
+        activeLeak: null,
+        leakHistory: null,
+        leakHistoryBucket: 0,
+        backflow: false,
+        noUse: false,
+        consumption: null,
+        usage: null,
+        readings: 0,
+        rssi: null,
+        snr: null,
+        devices: 2,
+      },
+    ]);
   });
 });
 

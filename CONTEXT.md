@@ -22,6 +22,10 @@ _Avoid_: Total, count, meter value
 Gallons consumed during a period, derived as the difference between two Consumption values.
 _Avoid_: Consumption, delta, flow
 
+**Signal**:
+How well the receiver heard one transmission: rtl_433's `rssi` in dBm and its `snr` in dB. Only reported when rtl_433 is run with `-M level`, so a Reading may carry none.
+_Avoid_: Strength, reception, RSSI
+
 **Heartbeat**:
 A Reading stored despite being identical to the previous one, forced every 15 minutes so that a silent Meter is distinguishable from a Meter that is simply not using water.
 _Avoid_: Keepalive, ping

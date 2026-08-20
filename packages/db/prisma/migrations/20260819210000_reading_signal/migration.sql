@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE "Reading" ADD COLUMN     "rssi" DOUBLE PRECISION,
+ADD COLUMN     "snr" DOUBLE PRECISION;

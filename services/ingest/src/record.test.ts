@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { R900Flags, R900Reading } from "./r900.js";
+import type { R900Flags, R900Reading, R900Signal } from "./r900.js";
 import {
   type MeterEventDraft,
   recordReading,
@@ -8,10 +8,11 @@ import {
 } from "./record.js";
 
 const quiet: R900Flags = { activeLeak: 0, leakHistory: 0, backflow: 0, noUse: 0 };
+const silent: R900Signal = { rssi: null, snr: null };
 const receivedAt = new Date("2026-08-18T12:00:00Z");
 
 function reading(fields: Partial<R900Reading> = {}): R900Reading {
-  return { meterId: 1n, consumption: "100.0", flags: quiet, ...fields };
+  return { meterId: 1n, consumption: "100.0", flags: quiet, signal: silent, ...fields };
 }
 
 function fakeStore(

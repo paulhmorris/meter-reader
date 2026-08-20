@@ -42,6 +42,22 @@ describe("parseR900", () => {
     });
   });
 
+  it("reads the levels rtl_433 reports when it is told to", () => {
+    expect(parseR900(payload({ rssi: -6.5, snr: 18.25 }))?.signal).toEqual({
+      rssi: -6.5,
+      snr: 18.25,
+    });
+  });
+
+  it("reads a Reading with no levels at all, rtl_433 sending none by default", () => {
+    expect(parseR900(payload({}))?.signal).toEqual({ rssi: null, snr: null });
+  });
+
+  it("ignores a message whose levels are not numbers", () => {
+    expect(parseR900(payload({ rssi: "-6.5" }))).toBeNull();
+    expect(parseR900(payload({ snr: null }))).toBeNull();
+  });
+
   it("ignores a message missing the fields a Reading needs", () => {
     expect(parseR900(Buffer.from(JSON.stringify({ model: "Neptune-R900", id: 1 })))).toBeNull();
     expect(parseR900(payload({ id: "1234567" }))).toBeNull();
