@@ -10,6 +10,7 @@
 
 <script lang="ts">
   import { BarChart, Bars, Tooltip } from "layerchart";
+  import { cubicOut } from "svelte/easing";
   import { goto } from "$app/navigation";
   import { periodName, tick } from "$lib/chart-format.js";
   import type { Granularity } from "$lib/granularity.js";
@@ -45,17 +46,18 @@
   const still =
     typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
+  /** Naming only the value axis leaves x and width unanimated, so no bar ever travels sideways. */
+  const grow = { type: "tween", duration: 220, easing: cubicOut } as const;
+
   /**
    * Bars land in the same bands whichever subset they come from, so tone can be a layer per tone.
    * Keying by period rather than by index retires the old window's bars outright, so a new window
-   * springs up from the axis instead of the old heights crawling to the new ones.
+   * grows up from the axis instead of the old heights crawling to the new ones.
    */
   const layer = {
     radius: 3,
     rounded: "top" as const,
-    motion: still
-      ? ("none" as const)
-      : ({ type: "spring", stiffness: 0.22, damping: 0.55 } as const),
+    motion: still ? ("none" as const) : ({ y: grow, height: grow } as const),
     initialHeight: 0,
     tooltip: true,
     key: (period: ChartPeriod) => period.start.getTime(),
@@ -71,7 +73,8 @@
 
     const dragged = from && Math.hypot(event.clientX - from.x, event.clientY - from.y) > 8;
     const period = context?.tooltip?.data as ChartPeriod | undefined;
-    if (!dragged && drillHref && period) goto(drillHref(period));
+    if (!dragged && drillHref && period)
+      goto(drillHref(period), { replaceState: true, noScroll: true });
   }
 </script>
 
