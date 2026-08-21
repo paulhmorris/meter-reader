@@ -74,20 +74,18 @@ Browsers only allow this over HTTPS, which the tunnel provides; a LAN route need
 
 ## Deploying
 
-Everything runs as Docker Compose services on one machine on the same LAN as Home Assistant, because the ingest service has to reach the MQTT broker there (ADR-0005). Cloudflare Tunnel puts the app on the internet without forwarding a port.
+Everything runs as Docker Compose services on one machine on the same LAN as Home Assistant, because the ingest service has to reach the MQTT broker there (ADR-0005). A push to `main` builds the image and pushes it to `ghcr.io/paulhmorris/meter-reader`; the host pulls it (ADR-0007).
+
+The Compose file in this repo builds from source, which is what a checkout is for:
 
 ```sh
-git clone https://github.com/paulhmorris/meter-reader /srv/meter-reader
-cd /srv/meter-reader
 cp .env.production.example .env    # then fill it in
 docker compose up -d --build
 ```
 
-The tunnel sits behind the `tunnel` profile, so a plain `docker compose up -d` leaves it alone. Once `TUNNEL_TOKEN` is set, bring it up with `docker compose --profile tunnel up -d`.
+The deployed copy is not that one. It lives in the `stacks` repo under `navi/meter-reader`, pulls the published image instead of building, and is deployed by Komodo, which holds every secret in the stack's environment rather than in a `.env` on the host. Deploying a new build is `docker compose pull && docker compose up -d` there, or the same from Komodo; pinning one is setting `METER_READER_TAG` to a `sha-` tag.
 
-The tunnel is half a dashboard job. In Cloudflare Zero Trust, under Networks → Tunnels, create a tunnel, copy its connector token into `TUNNEL_TOKEN`, and add a public hostname routing the domain in `ORIGIN` to `http://web:3000` — the service name on the compose network, not localhost. The connector comes up either way, so without that route the site answers 502 rather than failing to start.
-
-`.env` beside `compose.yaml` holds every secret and is never committed. Compose builds `DATABASE_URL` from `POSTGRES_PASSWORD`, and both processes report to Sentry with the environment `production` rather than the `development` a local `.env` gives them.
+The image carries no configuration, so the same one runs for anyone. Both Sentry DSNs, the VAPID keys and every password arrive at runtime, and CI fails the build if a value reaches the bundle at build time.
 
 `ORIGIN` must match what the browser shows exactly. adapter-node rejects form posts from any other origin, so getting it wrong breaks claiming and Admin sign-in while every page still loads.
 
@@ -97,28 +95,17 @@ The tunnel is half a dashboard job. In Cloudflare Zero Trust, under Networks →
 | `migrate`    | Runs `prisma migrate deploy` and exits. `web` and `ingest` wait for it.      |
 | `web`        | The SvelteKit app on port 3000, published per `WEB_BIND`.                    |
 | `ingest`     | Subscribes to the broker and stores Readings.                                |
-| `cloudflared`| The tunnel that serves `ORIGIN`. Not started with the others; see below.     |
 | `prune`      | Thins old Readings. Not started with the others; run nightly (below).        |
 
 `web` and `ingest` are `restart: unless-stopped`, so both come back on failure and after a reboot.
 
 ### Reaching the app
 
-The app reads the client address from `X-Forwarded-For` and adapter-node **fails the request** if that header is missing — a claim or an Admin sign-in without it is a 500, rather than a household silently sharing everyone else's rate-limit bucket. Anything put in front of the app has to set that header.
+The app reads the client address from `X-Forwarded-For` and adapter-node **fails the request** if that header is missing — a claim or an Admin sign-in without it is a 500, rather than a household silently sharing everyone else's rate-limit bucket. Anything put in front of the app has to set that header, and `XFF_DEPTH` has to match how many hops do.
 
-A reverse proxy sets it by default, and so does the tunnel. `WEB_BIND` decides what can reach the app: left at loopback it is unreachable from the network, and only the tunnel gets in.
+In production a Cloudflare Tunnel is that one hop, and it runs as its own stack (`navi/cloudflared`) rather than beside the app, so one connector can serve other services and redeploying the app is not an outage for them. Its ingress rules are in git; it reaches `web` over a shared `edge` network, by the alias `meter-web`, and the app publishes no port at all. One route in means one `XFF_DEPTH`, and it means `/admin` has Cloudflare in front of it and no second door on the LAN.
 
-To also reach it from the LAN, give `WEB_BIND` an address a reverse proxy can dial and serve the **same hostname** as `ORIGIN` from split-horizon DNS. One hostname keeps `ORIGIN` single-valued, so form posts and cookies behave the same by either route — two hostnames would mean adapter-node rejecting every form post that did not arrive on the one in `ORIGIN`. In Caddy:
-
-```
-meter.example.com {
-    reverse_proxy 192.168.1.10:3010
-}
-```
-
-The proxy needs a real certificate, not plain HTTP: the Grant and Admin cookies are `Secure`, so a browser reaching the app over `http://` on a LAN address accepts the page and silently drops the cookie, and a Claim appears to work without sticking.
-
-Bear in mind a LAN route is a second door to `/admin`, held open by `ADMIN_PASSWORD` alone, where the tunnel route has Cloudflare in front of it.
+A LAN reverse proxy can serve the app instead, by giving `WEB_BIND` an address it can dial. It must serve the **same hostname** as `ORIGIN` from split-horizon DNS, because adapter-node rejects every form post that did not arrive on the one in `ORIGIN`, and it needs a real certificate: the Grant and Admin cookies are `Secure`, so a browser reaching the app over `http://` accepts the page and silently drops the cookie, and a Claim appears to work without sticking. Running both routes at once means the two disagree about `XFF_DEPTH`, so pick one.
 
 ### Restarting
 
@@ -132,20 +119,15 @@ docker compose ps                  # web reports healthy from GET /health
 
 ```sh
 docker compose exec -T postgres pg_dump --clean --if-exists -U meter meter-reader | gzip > ~/meter-reader-$(date +%F).sql.gz
-git pull
-docker compose up -d --build
+docker compose pull
+docker compose up -d
 ```
 
 Migrations run before the new `web` and `ingest` start, so a deploy never serves a schema the code has not caught up to.
 
 ### Rolling back
 
-Code alone rolls back by checking out the previous commit and rebuilding:
-
-```sh
-git checkout <previous-sha>
-docker compose up -d --build
-```
+Code alone rolls back by naming the previous image, `METER_READER_TAG=sha-<short>`, and bringing the stack up again.
 
 Prisma migrations are forward-only — there are no down migrations. If the deploy being undone applied one, the old code will meet a schema it does not expect, so restore the database from the dump taken just before it:
 
@@ -181,10 +163,10 @@ Run from the repo root.
 
 `npm run prune` thins the Reading table by age — raw for 7 days, then the last Reading of each hour to 60 days, of each day to a year, of each week beyond (ADR-0003). Usage for any period the UI shows at that age is unchanged by a prune, and Meter Events are never touched. It deletes in batches, is safe to run against live ingest, and running it twice deletes nothing the second time.
 
-It runs once and exits, so schedule it nightly from the host's crontab:
+It runs once and exits, so schedule it nightly. In production that is a Komodo scheduled action against the stack:
 
 ```
-15 3 * * * cd /srv/meter-reader && docker compose run --rm prune >> /var/log/meter-reader-prune.log 2>&1
+docker compose run --rm prune
 ```
 
 Locally, or outside Docker, `npm run prune` does the same thing.

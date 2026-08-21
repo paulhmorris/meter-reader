@@ -49,8 +49,7 @@ services:
       # Caddy and cloudflared both set it; without it every household shares one rate-limit bucket.
       ADDRESS_HEADER: X-Forwarded-For
       XFF_DEPTH: 1
-    # Unset, only the tunnel reaches the app. Set it and a LAN reverse proxy can too,
-    # but it must send X-Forwarded-For or every request through it fails.
+    # Whatever is put in front must send X-Forwarded-For, or every request through it fails.
     ports:
       - "${WEB_BIND:-127.0.0.1:3010}:3000"
     depends_on:
@@ -84,18 +83,7 @@ services:
       migrate:
         condition: service_completed_successfully
 
-  # Off until TUNNEL_TOKEN is set: docker compose --profile tunnel up -d
-  cloudflared:
-    profiles: [tunnel]
-    image: cloudflare/cloudflared:latest
-    restart: unless-stopped
-    command: tunnel --no-autoupdate run
-    environment:
-      TUNNEL_TOKEN: ${TUNNEL_TOKEN}
-    depends_on:
-      - web
-
-  # Nightly, from the host's crontab: docker compose run --rm prune
+  # Nightly: docker compose run --rm prune
   prune:
     <<: *image
     profiles: [tools]
