@@ -19,7 +19,7 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
-      - run: DATABASE_URL=postgresql://build npm run db:generate
+      - run: CHECKPOINT_DISABLE=1 DATABASE_URL=postgresql://build npm run db:generate
       - name: Build with canary secrets
         env:
           PUBLIC_SENTRY_DSN: https://canary@canary.ingest.sentry.io/424242

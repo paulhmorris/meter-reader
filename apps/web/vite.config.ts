@@ -15,6 +15,7 @@ export default defineConfig({
         org: "cosmic-labs",
         project: "meter-reader",
         authToken: process.env.SENTRY_AUTH_TOKEN,
+        telemetry: false,
         // The image is built without .git, so nothing can infer the commit.
         release: { name: process.env.SENTRY_RELEASE },
       },

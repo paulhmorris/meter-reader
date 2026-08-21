@@ -1,5 +1,7 @@
 # One image runs all three processes; compose picks between them with a command.
 FROM node:24-slim AS manifests
+# Prisma's postinstall and CLI check for updates over the network on every stage.
+ENV CHECKPOINT_DISABLE=1
 WORKDIR /srv
 COPY package.json package-lock.json ./
 COPY apps/web/package.json apps/web/
@@ -11,6 +13,11 @@ FROM manifests AS build
 # Names the Sentry release the source maps are uploaded against; .dockerignore keeps .git out,
 # so nothing here can infer the commit.
 ARG SENTRY_RELEASE
+# sentry-cli reads the system CA store, which node:slim does not have; Node's is compiled in,
+# so nothing else in the build notices it is missing.
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends ca-certificates \
+  && rm -rf /var/lib/apt/lists/*
 RUN npm ci
 COPY . .
 # prisma generate reaches no database, but the shared Prisma config insists on a url.
