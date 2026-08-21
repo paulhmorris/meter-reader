@@ -223,7 +223,7 @@
     {#if anyLeaking}
       <p class="flex items-start gap-2">
         <span class="mt-0.5 size-3 shrink-0 rounded-sm bg-chart-leak" aria-hidden="true"></span>
-        The meter was reporting a leak during these.
+        The meter was reporting a leak
       </p>
     {/if}
     {#if anyPartial}

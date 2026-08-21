@@ -35,7 +35,7 @@ const LEAK_HISTORY_BUCKETS = [
   "8–14 days",
   "15–21 days",
   "22–34 days",
-  "35 or more days",
+  "35+ days",
 ];
 
 /** The bucket the `leak` field names, or null for one no meter can report, which we would rather not guess at. */

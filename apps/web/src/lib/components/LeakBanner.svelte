@@ -7,10 +7,8 @@
   let { level, fresh }: { level: Level; fresh: boolean } = $props();
 
   const CAUSE = {
-    continuous:
-      "Water ran through it without a break for a whole day. That usually means something is stuck open — a running toilet, a valve that has not closed, or a burst pipe.",
-    intermittent:
-      "Water ran through it in at least half of the day, in short bursts. That usually means something is dripping or a toilet is refilling on its own.",
+    continuous: "Water was used in every 15-minute interval for the last 24 hours.",
+    intermittent: "Water was used for at least 50 of the last 96 15-minute intervals.",
     unknown: "",
   };
 </script>

@@ -3,18 +3,18 @@ import { describeEvent } from "./events.js";
 
 describe("describeEvent", () => {
   it("says when a leak started, and whether it runs non-stop", () => {
-    expect(describeEvent({ flag: "activeLeak", from: 0, to: 1 })).toBe("Leak started, on and off");
-    expect(describeEvent({ flag: "activeLeak", from: 0, to: 2 })).toBe(
-      "Leak started, running non-stop",
+    expect(describeEvent({ flag: "activeLeak", from: 0, to: 1 })).toBe(
+      "Leak started (intermittent)",
     );
+    expect(describeEvent({ flag: "activeLeak", from: 0, to: 2 })).toBe("Leak started (continuous)");
   });
 
   it("says when a leak changed without stopping", () => {
     expect(describeEvent({ flag: "activeLeak", from: 1, to: 2 })).toBe(
-      "Leak changed to running non-stop",
+      "Leak changed to continuous",
     );
     expect(describeEvent({ flag: "activeLeak", from: 2, to: 1 })).toBe(
-      "Leak changed to on and off",
+      "Leak changed to intermittent",
     );
   });
 

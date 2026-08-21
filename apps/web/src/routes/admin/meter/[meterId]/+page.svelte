@@ -108,7 +108,7 @@
       {#if data.claimCode}
         <div class="flex items-center gap-2">
           <p
-            class="border-primary/40 bg-primary/10 min-w-0 flex-1 rounded-lg border p-4 text-center text-xl font-semibold tracking-[0.15em]"
+            class="min-w-0 flex-1 rounded-lg border border-muted bg-muted p-4 text-center text-lg font-semibold tracking-[0.15em]"
           >
             <code>{data.claimCode.code}</code>
           </p>

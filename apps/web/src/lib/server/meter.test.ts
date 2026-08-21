@@ -61,7 +61,7 @@ describe("leakHistoryLabel", () => {
     expect(leakHistoryLabel(3)).toBe("8–14 days");
     expect(leakHistoryLabel(4)).toBe("15–21 days");
     expect(leakHistoryLabel(5)).toBe("22–34 days");
-    expect(leakHistoryLabel(6)).toBe("35 or more days");
+    expect(leakHistoryLabel(6)).toBe("35+ days");
   });
 
   it("has no label for a bucket outside the seven the meter can report", () => {

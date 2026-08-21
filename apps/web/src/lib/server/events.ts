@@ -8,14 +8,14 @@ export interface MeterEvent {
   occurredAt: Date;
 }
 
-const LEAK_KINDS = { intermittent: "on and off", continuous: "running non-stop" };
+const LEAK_KINDS = { intermittent: "intermittent", continuous: "continuous" };
 
 function describeActiveLeak(from: number, to: number): string {
   const level = activeLeakLevel(to);
   if (level === "none") return "Leak stopped";
 
   if (activeLeakLevel(from) === "none") {
-    return level === "unknown" ? "Leak started" : `Leak started, ${LEAK_KINDS[level]}`;
+    return level === "unknown" ? "Leak started" : `Leak started (${LEAK_KINDS[level]})`;
   }
   return level === "unknown" ? "Leak changed" : `Leak changed to ${LEAK_KINDS[level]}`;
 }
