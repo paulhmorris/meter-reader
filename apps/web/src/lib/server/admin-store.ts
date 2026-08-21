@@ -131,7 +131,7 @@ export function prismaAdminStore(prisma: PrismaClient): AdminStore {
       return prisma.claimCode.findFirst({
         where: { meterId, rotatedAt: null },
         orderBy: { createdAt: "desc" },
-        select: { createdAt: true },
+        select: { code: true, createdAt: true },
       });
     },
 

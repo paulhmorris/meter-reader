@@ -37,7 +37,8 @@ export interface AdminStore {
   address(meterId: bigint): Promise<string | null>;
   /** Writes down where the Meter is, or rubs it out when given nothing. */
   setAddress(input: { meterId: bigint; address: string | null }): Promise<void>;
-  activeClaimCode(meterId: bigint): Promise<{ createdAt: Date } | null>;
+  /** The Meter's claimable Claim Code, there being at most one, or null while none is. */
+  activeClaimCode(meterId: bigint): Promise<{ code: string; createdAt: Date } | null>;
   /** Stores the new code and stops every older one claiming, leaving their Grants alone. */
   rotateClaimCode(input: { meterId: bigint; code: string; now: Date }): Promise<void>;
   /** The Meter's latest Readings, newest first, at most `limit` of them. */

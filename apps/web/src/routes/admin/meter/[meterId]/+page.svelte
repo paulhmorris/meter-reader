@@ -9,11 +9,21 @@
   import { Input } from "$lib/components/ui/input/index.js";
   import * as Table from "$lib/components/ui/table/index.js";
   import ArrowLeft from "@lucide/svelte/icons/arrow-left";
+  import Check from "@lucide/svelte/icons/check";
+  import Copy from "@lucide/svelte/icons/copy";
   import type { ActionData, PageData } from "./$types.js";
 
   let { data, form }: { data: PageData; form: ActionData } = $props();
 
   let confirming = $state(false);
+  let copied = $state(false);
+
+  async function copyCode() {
+    if (!data.claimCode) return;
+    await navigator.clipboard.writeText(data.claimCode.code);
+    copied = true;
+    setTimeout(() => (copied = false), 2000);
+  }
 
   const decimal = new Intl.NumberFormat(undefined, {
     minimumFractionDigits: 1,
@@ -95,17 +105,26 @@
     </CardHeader>
 
     <div class="space-y-3 px-4">
-      {#if form?.issued}
-        <p
-          class="border-primary/40 bg-primary/10 rounded-lg border p-4 text-center text-xl font-semibold tracking-[0.15em]"
-        >
-          <code>{form.issued}</code>
-        </p>
-        <p class="text-xs leading-relaxed text-muted-foreground">
-          Hand this over now — it is shown this once. If it is lost, issue another; the old one
-          stops working and every device already claimed keeps working.
-        </p>
-      {:else if data.claimCode}
+      {#if data.claimCode}
+        <div class="flex items-center gap-2">
+          <p
+            class="border-primary/40 bg-primary/10 min-w-0 flex-1 rounded-lg border p-4 text-center text-xl font-semibold tracking-[0.15em]"
+          >
+            <code>{data.claimCode.code}</code>
+          </p>
+          <Button
+            variant="outline"
+            size="icon"
+            aria-label={copied ? "Claim code copied" : "Copy the claim code"}
+            onclick={copyCode}
+          >
+            {#if copied}
+              <Check class="size-4" />
+            {:else}
+              <Copy class="size-4" />
+            {/if}
+          </Button>
+        </div>
         <p class="text-sm text-muted-foreground">
           Issued {stampedAt(data.claimCode.createdAt)} and still claimable.
         </p>

@@ -29,16 +29,26 @@ export const load: PageServerLoad = async ({ params }) => {
 
   const health = readings[0] ? meterHealth(readings[0].receivedAt, new Date()) : null;
 
-  return { meterId: String(meterId), address, claimCode, grants, readings, health };
+  return {
+    meterId: String(meterId),
+    address,
+    claimCode: claimCode && {
+      code: formatClaimCode(claimCode.code),
+      createdAt: claimCode.createdAt,
+    },
+    grants,
+    readings,
+    health,
+  };
 };
 
 export const actions: Actions = {
-  /** Issues a Claim Code and shows it once; any older code stops claiming, its Grants untouched. */
+  /** Issues a Claim Code; any older code stops claiming, its Grants untouched. */
   issue: async ({ params }) => {
     const meterId = await meterOf(params);
-    const code = await issueClaimCode(prismaAdminStore(prisma()), { meterId, now: new Date() });
+    await issueClaimCode(prismaAdminStore(prisma()), { meterId, now: new Date() });
 
-    return { issued: formatClaimCode(code) };
+    return { issued: true };
   },
 
   /** Writes down where the meter is, so a leak names a neighbour rather than a number. */

@@ -52,6 +52,17 @@
   /** A finger covers whatever it points at, so a touch pins the tooltip to the top of the chart. */
   let touching = $state(false);
   let helpOpen = $state(false);
+  let tooltipRef = $state<HTMLElement>();
+
+  /**
+   * Layerchart flips the tooltip to the pointer's other side rather than clamping it, so on a
+   * chart narrower than twice the tooltip it lands off the screen and reads as no tooltip at all.
+   * Placing it ourselves keeps it beside the pointer and inside the chart.
+   */
+  function tooltipX(chart: any) {
+    const room = chart.containerWidth - (tooltipRef?.offsetWidth ?? 0);
+    return Math.max(0, Math.min(chart.tooltip.x + 12, room));
+  }
 
   const still =
     typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -156,6 +167,8 @@
         {#snippet tooltip({ context }: { context: any })}
           <Tooltip.Root
             {context}
+            bind:rootRef={tooltipRef}
+            x={tooltipX(context)}
             y={touching ? 0 : "pointer"}
             anchor="top-left"
             class="border border-border bg-popover text-popover-foreground"
