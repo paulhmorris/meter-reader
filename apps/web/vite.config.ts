@@ -8,5 +8,18 @@ import { defineConfig } from "vite";
 config({ path: "../../.env" });
 
 export default defineConfig({
-  plugins: [sentrySvelteKit({ autoUploadSourceMaps: false }), tailwindcss(), sveltekit()],
+  plugins: [
+    // Without SENTRY_AUTH_TOKEN the plugin skips the upload, so a build needs no Sentry account.
+    sentrySvelteKit({
+      sourceMapsUploadOptions: {
+        org: "cosmic-labs",
+        project: "meter-reader",
+        authToken: process.env.SENTRY_AUTH_TOKEN,
+        // The image is built without .git, so nothing can infer the commit.
+        release: { name: process.env.SENTRY_RELEASE },
+      },
+    }),
+    tailwindcss(),
+    sveltekit(),
+  ],
 });

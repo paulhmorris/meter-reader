@@ -176,3 +176,11 @@ Only `DATABASE_URL` is required. A failed run exits non-zero and reports to Sent
 ## Checking Sentry
 
 With a DSN set, `GET /debug-sentry` (development only) throws in the app, and starting the ingest service with `INGEST_DEBUG_SENTRY=1` throws in the service. Both errors should appear in Sentry.
+
+The project is `meter-reader` under the `cosmic-labs` organisation, and one DSN serves both halves: `SENTRY_DSN` for the two Node processes, `PUBLIC_SENTRY_DSN` for the browser. The environment is `development` unless something sets it, and the deployed Compose file sets `production`.
+
+### Source maps
+
+CI uploads the app's source maps so a production stack trace names real files and lines. It needs `SENTRY_AUTH_TOKEN`, an organisation auth token, as a repository secret — the workflow passes it to `docker build` as a BuildKit secret, so it is never a layer or a build argument, and `SENTRY_RELEASE` names the release as the commit SHA, since `.dockerignore` keeps `.git` out of the build. The maps are deleted after the upload: served from `build/`, they would hand the whole source to anyone who asked for it.
+
+Without the token the build skips the upload and warns, which is what a local build and anyone else's build do.
