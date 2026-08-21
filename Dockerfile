@@ -1,5 +1,5 @@
 # One image runs all three processes; compose picks between them with a command.
-FROM node:22-slim AS manifests
+FROM node:24-slim AS manifests
 WORKDIR /srv
 COPY package.json package-lock.json ./
 COPY apps/web/package.json apps/web/

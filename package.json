@@ -30,12 +30,15 @@
     "typescript": "^5.9.3"
   },
   "engines": {
-    "node": ">=22"
+    "node": ">=24"
   },
   "allowScripts": {
     "@prisma/engines@7.9.1": true,
     "@sentry/cli@2.58.6": true,
     "esbuild@0.28.2": true,
     "prisma@7.9.1": true
+  },
+  "volta": {
+    "node": "24.19.0"
   }
 }
