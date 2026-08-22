@@ -13,6 +13,8 @@ model Meter {
   createdAt  DateTime     @default(now())
   /// Where the Meter is, written down by the Admin so a leak can be traced to a neighbour.
   address    String?
+  /// Set when the Admin disables the Meter, which keeps it out of the Admin list. Readings are still accepted.
+  disabledAt DateTime?
   readings   Reading[]
   events     MeterEvent[]
   claimCodes ClaimCode[]

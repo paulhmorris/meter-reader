@@ -20,8 +20,9 @@ export const load: PageServerLoad = async ({ params }) => {
   const meterId = await meterOf(params);
   const store = prismaAdminStore(prisma());
 
-  const [address, claimCode, grants, readings] = await Promise.all([
+  const [address, disabledAt, claimCode, grants, readings] = await Promise.all([
     store.address(meterId),
+    store.disabledAt(meterId),
     store.activeClaimCode(meterId),
     store.grants(meterId),
     recentReadings(store, { meterId, count: READINGS_SHOWN }),
@@ -32,6 +33,7 @@ export const load: PageServerLoad = async ({ params }) => {
   return {
     meterId: String(meterId),
     address,
+    disabledAt,
     claimCode: claimCode && {
       code: formatClaimCode(claimCode.code),
       createdAt: claimCode.createdAt,
@@ -62,6 +64,20 @@ export const actions: Actions = {
     });
 
     return { addressSaved: true };
+  },
+
+  /** Keeps a meter on a house nobody is using out of the Admin list. Readings are still stored. */
+  disable: async ({ params, request }) => {
+    const meterId = await meterOf(params);
+    const form = await request.formData();
+    const disabled = form.get("disabled") === "true";
+
+    await prismaAdminStore(prisma()).setDisabledAt({
+      meterId,
+      disabledAt: disabled ? new Date() : null,
+    });
+
+    return { disabled };
   },
 
   revoke: async ({ params, request }) => {

@@ -37,6 +37,10 @@ export interface AdminStore {
   address(meterId: bigint): Promise<string | null>;
   /** Writes down where the Meter is, or rubs it out when given nothing. */
   setAddress(input: { meterId: bigint; address: string | null }): Promise<void>;
+  /** When the Admin disabled the Meter, null while it is in use. */
+  disabledAt(meterId: bigint): Promise<Date | null>;
+  /** Disables the Meter as of `now`, or puts it back in use when given null. */
+  setDisabledAt(input: { meterId: bigint; disabledAt: Date | null }): Promise<void>;
   /** The Meter's claimable Claim Code, there being at most one, or null while none is. */
   activeClaimCode(meterId: bigint): Promise<{ code: string; createdAt: Date } | null>;
   /** Stores the new code and stops every older one claiming, leaving their Grants alone. */
@@ -53,6 +57,8 @@ export interface MeterStats {
   id: bigint;
   /** Where the Admin has written the Meter down as being, null while nothing is written. */
   address: string | null;
+  /** When the Admin disabled the Meter, null while it is in use. */
+  disabledAt: Date | null;
   /** Null until the SDR has heard the Meter at all, which leaves nothing to judge it by. */
   latest: {
     receivedAt: Date;
@@ -102,6 +108,8 @@ export interface MeterSummary {
   id: bigint;
   /** Where the Admin has written the Meter down as being, null while nothing is written. */
   address: string | null;
+  /** When the Admin disabled the Meter, null while it is in use. */
+  disabledAt: Date | null;
   /** Null until the SDR has heard the Meter at all, which leaves nothing to judge it by. */
   lastHeardAt: Date | null;
   health: MeterHealth | null;
@@ -128,7 +136,7 @@ export async function meterSummaries(store: AdminStore, now: Date): Promise<Mete
   const meters = await store.meters(now);
 
   return meters.map((meter) => {
-    const { id, address, latest, consumptionBefore, consumptionOpening } = meter;
+    const { id, address, disabledAt, latest, consumptionBefore, consumptionOpening } = meter;
     const { readings, rssi, snr, devices } = meter;
     // Nothing precedes the first day the Meter was ever heard in, so its own first Reading opens
     // it: the Usage the stored Readings account for, understated (ADR-0002).
@@ -137,6 +145,7 @@ export async function meterSummaries(store: AdminStore, now: Date): Promise<Mete
     return {
       id,
       address,
+      disabledAt,
       lastHeardAt: latest?.receivedAt ?? null,
       health: latest ? meterHealth(latest.receivedAt, now) : null,
       activeLeak: latest ? activeLeakLevel(latest.activeLeak) : null,

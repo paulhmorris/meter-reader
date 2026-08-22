@@ -50,6 +50,9 @@
     <div class="flex flex-wrap items-center justify-between gap-3">
       <h1 class="text-lg font-semibold tracking-tight">Meter {data.meterId}</h1>
       <div class="flex items-center gap-2">
+        {#if data.disabledAt}
+          <Badge variant="outline" class="text-muted-foreground">Disabled</Badge>
+        {/if}
         <MeterHealthBadge health={data.health} lastHeardAt={latest?.receivedAt ?? null} />
         <a href="/meter/{data.meterId}" class={buttonVariants({ variant: "outline", size: "sm" })}>
           Neighbor view
@@ -97,6 +100,31 @@
       />
       <Button type="submit" variant="outline">Save</Button>
     </form>
+  </Card>
+
+  <Card>
+    <CardHeader>
+      <CardTitle>In use</CardTitle>
+    </CardHeader>
+
+    <div class="space-y-3 px-4">
+      <p class="text-sm text-muted-foreground">
+        {#if data.disabledAt}
+          Disabled {stampedAt(data.disabledAt)}, so it is listed apart from the meters in use.
+          Readings are still stored, and anyone holding access still sees it.
+        {:else}
+          Disable a meter on a house nobody is using and it drops out of the list of meters in use.
+          Readings are still stored, and anyone holding access still sees it.
+        {/if}
+      </p>
+
+      <form method="post" action="?/disable" use:enhance>
+        <input type="hidden" name="disabled" value={data.disabledAt ? "false" : "true"} />
+        <Button type="submit" variant="outline">
+          {data.disabledAt ? "Put it back in use" : "Disable this meter"}
+        </Button>
+      </form>
+    </div>
   </Card>
 
   <Card>

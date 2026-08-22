@@ -14,6 +14,10 @@ _Avoid_: Device, unit, sensor
 Where a Meter is, written down by the Admin so that a leak can be traced to a neighbour. Free text, optional, and never shown to a neighbour.
 _Avoid_: Location, name, household, owner, label
 
+**Disabled**:
+Describes a Meter the Admin has marked as being on a house nobody is using, which lists it apart from the Meters in use. Readings are still stored and Grants still work; the Readings simply thin with age like any other.
+_Avoid_: Archived, hidden, inactive, retired, deleted
+
 **Reading**:
 One decoded R900 transmission from a Meter, with the time it was received.
 _Avoid_: Sample, packet, message, datapoint

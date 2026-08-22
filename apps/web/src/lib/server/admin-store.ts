@@ -8,6 +8,7 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 interface MeterRow {
   id: bigint;
   address: string | null;
+  disabledAt: Date | null;
   receivedAt: Date | null;
   consumption: number | null;
   activeLeak: number | null;
@@ -52,6 +53,7 @@ export function prismaAdminStore(prisma: PrismaClient): AdminStore {
         SELECT
           m.id,
           m.address,
+          m."disabledAt",
           l."receivedAt",
           l.consumption::float8 AS "consumption",
           l."activeLeak",
@@ -105,6 +107,7 @@ export function prismaAdminStore(prisma: PrismaClient): AdminStore {
       return rows.map((row) => ({
         id: row.id,
         address: row.address,
+        disabledAt: row.disabledAt,
         latest: latestOf(row),
         consumptionBefore: row.consumptionBefore,
         consumptionOpening: row.consumptionOpening,
@@ -125,6 +128,18 @@ export function prismaAdminStore(prisma: PrismaClient): AdminStore {
 
     async setAddress({ meterId, address }) {
       await prisma.meter.update({ where: { id: meterId }, data: { address } });
+    },
+
+    async disabledAt(meterId) {
+      const meter = await prisma.meter.findUnique({
+        where: { id: meterId },
+        select: { disabledAt: true },
+      });
+      return meter?.disabledAt ?? null;
+    },
+
+    async setDisabledAt({ meterId, disabledAt }) {
+      await prisma.meter.update({ where: { id: meterId }, data: { disabledAt } });
     },
 
     async activeClaimCode(meterId) {

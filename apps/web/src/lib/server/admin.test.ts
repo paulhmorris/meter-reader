@@ -21,6 +21,8 @@ function store(overrides: Partial<AdminStore> = {}): AdminStore {
     meters: async () => [],
     address: async () => null,
     setAddress: async () => {},
+    disabledAt: async () => null,
+    setDisabledAt: async () => {},
     activeClaimCode: async () => null,
     rotateClaimCode: async () => {},
     readings: async () => [],
@@ -78,6 +80,7 @@ describe("meterSummaries", () => {
     return {
       id: 1n,
       address: null,
+      disabledAt: null,
       latest: {
         receivedAt: new Date("2026-08-19T11:00:00Z"),
         consumption: 481_320.5,
@@ -131,6 +134,16 @@ describe("meterSummaries", () => {
         activeLeak: "none",
       },
     ]);
+  });
+
+  it("carries when the Admin disabled a Meter, so the list can set it apart", async () => {
+    const disabledAt = new Date("2026-08-18T09:00:00Z");
+    const summaries = await meterSummaries(
+      store({ meters: async () => [stats({ id: 1n }), stats({ id: 2n, disabledAt })] }),
+      now,
+    );
+
+    expect(summaries.map((summary) => summary.disabledAt)).toEqual([null, disabledAt]);
   });
 
   it("carries the Meter's own flags, its Consumption and today's Usage", async () => {
@@ -197,6 +210,7 @@ describe("meterSummaries", () => {
       {
         id: 1n,
         address: null,
+        disabledAt: null,
         lastHeardAt: null,
         health: null,
         activeLeak: null,

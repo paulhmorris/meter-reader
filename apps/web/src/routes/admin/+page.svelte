@@ -87,14 +87,19 @@
 
   let sort = $state<{ column: Column; descending: boolean } | null>(null);
 
+  const inUse = $derived(data.meters.filter((meter) => meter.disabledAt === null));
+  const disabled = $derived(
+    data.meters.filter((meter) => meter.disabledAt !== null).sort(byDefault),
+  );
+
   const sorted = $derived.by(() => {
     const chosen = sort;
-    if (chosen === null) return [...data.meters].sort(byDefault);
+    if (chosen === null) return [...inUse].sort(byDefault);
 
     const rank = RANK[chosen.column];
     const direction = chosen.descending ? -1 : 1;
 
-    return [...data.meters].sort((a, b) => {
+    return [...inUse].sort((a, b) => {
       if (rank(a) !== rank(b)) return rank(a) > rank(b) ? direction : -direction;
       return Number(a.id) - Number(b.id);
     });
@@ -113,7 +118,7 @@
     <p class="mt-1 text-sm text-muted-foreground">Every meter the receiver has heard of.</p>
   </header>
 
-  {#if data.meters.length > 0}
+  {#if inUse.length > 0}
     <Card>
       <Table.Root>
         <Table.Header>
@@ -218,7 +223,30 @@
     </Card>
   {:else}
     <p class="rounded-lg border border-dashed border-border p-6 text-sm text-muted-foreground">
-      The receiver has not heard a meter yet.
+      {data.meters.length > 0
+        ? "Every meter the receiver has heard is disabled."
+        : "The receiver has not heard a meter yet."}
     </p>
+  {/if}
+
+  {#if disabled.length > 0}
+    <section class="space-y-2">
+      <h2 class="text-sm font-semibold tracking-tight text-muted-foreground">Disabled</h2>
+      <Card class="divide-y divide-border">
+        {#each disabled as meter (meter.id)}
+          <div class="flex items-baseline gap-3 px-3 py-2.5 text-sm">
+            <a class="font-medium hover:underline" href="/admin/meter/{meter.id}">{meter.id}</a>
+            <span class="min-w-0 flex-1 truncate text-muted-foreground">
+              {meter.address ?? "No address"}
+            </span>
+            {#if meter.disabledAt}
+              <span class="whitespace-nowrap text-xs text-muted-foreground">
+                Disabled {stampedAt(meter.disabledAt)}
+              </span>
+            {/if}
+          </div>
+        {/each}
+      </Card>
+    </section>
   {/if}
 </div>
