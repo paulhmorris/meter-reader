@@ -23,7 +23,7 @@
   const HOUR_MS = 60 * 60 * 1000;
 
   const unheardForMs = $derived(lastHeardAt ? now.ms - lastHeardAt.getTime() : Infinity);
-  /** Live is the last hour, not the whole day Stale allows: a meter reports every 15 minutes. */
+  /** The green window is the last hour, not the whole day Stale allows: a meter reports every 15 minutes. */
   const live = $derived(unheardForMs < HOUR_MS);
 
   const UNHEARD = {
@@ -47,7 +47,7 @@
 {:else if health === "fresh" && live}
   <Badge variant="outline" class="border-fresh/40 gap-1.5 text-fresh {className}">
     <RadioTower class="size-3" aria-hidden="true" />
-    Live
+    {quiet}
   </Badge>
 {:else if health === "fresh"}
   <Badge variant="outline" class="text-muted-foreground {className}">{quiet}</Badge>

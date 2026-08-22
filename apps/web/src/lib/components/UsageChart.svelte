@@ -71,19 +71,28 @@
   const grow = { type: "tween", duration: 220, easing: cubicOut } as const;
 
   /**
-   * Bars land in the same bands whichever subset they come from, so tone can be a layer per tone.
-   * Keying by the period itself rather than by index retires the old window's bars outright, so a
-   * new window grows up from the axis instead of the old heights crawling to the new ones. The end
-   * is in the key as well as the start, so a day and the hour it opens with never share a bar.
+   * Which window is on screen: 7 days and 30 days are both by the day, so the days they share
+   * would otherwise carry the same key from one to the other.
    */
-  const layer = {
+  const windowKey = $derived(
+    periods.length > 0 ? `${periods[0].start.getTime()}-${periods.length}` : "",
+  );
+
+  /**
+   * Bars land in the same bands whichever subset they come from, so tone can be a layer per tone.
+   * Keying by the window and the period rather than by index retires the old window's bars
+   * outright, so a new window grows up from the axis instead of the old heights crawling to the
+   * new ones. The end is in the key as well as the start, so a day and the hour it opens with
+   * never share a bar.
+   */
+  const layer = $derived({
     radius: 3,
     rounded: "top" as const,
     motion: still ? ("none" as const) : ({ y: grow, height: grow } as const),
     initialHeight: 0,
     tooltip: true,
-    key: (period: ChartPeriod) => `${period.start.getTime()}-${period.end.getTime()}`,
-  };
+    key: (period: ChartPeriod) => `${windowKey}:${period.start.getTime()}-${period.end.getTime()}`,
+  });
 
   /**
    * A tap opens the period the tooltip is on, which is the whole band rather than the bar itself:
