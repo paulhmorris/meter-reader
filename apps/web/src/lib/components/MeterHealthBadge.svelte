@@ -34,9 +34,9 @@
   /** Relative rather than a timestamp, so the badge stays a few characters wide beside the title. */
   function ago(ms: number): string {
     const hours = Math.floor(ms / HOUR_MS);
-    if (hours < 1) return `${Math.floor(ms / 60_000)}m ago`;
-    if (hours < 24) return `${hours}h ago`;
-    return `${Math.floor(hours / 24)}d ago`;
+    if (hours < 1) return `${Math.floor(ms / 60_000)}m`;
+    if (hours < 24) return `${hours}h`;
+    return `${Math.floor(hours / 24)}d`;
   }
 
   const quiet = $derived(lastHeardAt ? ago(unheardForMs) : "");
