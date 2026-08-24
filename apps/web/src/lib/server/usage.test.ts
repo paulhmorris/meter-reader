@@ -502,19 +502,37 @@ describe("runningUsage", () => {
     expect(points.map((point) => point.afterSilence)).toEqual([false, false, false]);
   });
 
-  it("marks the point a silence water was used in ends, so the line can break there", async () => {
+  it("carries the line across a missed transmission or two, water used or not", async () => {
     const points = await runningUsage(
       {
         store: store([
-          ["2026-06-15T22:50:00Z", 1000],
-          ["2026-06-15T23:05:00Z", 1005],
-          ["2026-06-15T23:55:00Z", 1050],
+          ["2026-06-15T23:05:00Z", 1000],
+          ["2026-06-15T23:50:00Z", 1030],
         ]),
       },
       {
         meterId,
         from: new Date("2026-06-15T23:00:00Z"),
         to: new Date("2026-06-16T00:00:00Z"),
+      },
+    );
+
+    expect(points.map((point) => point.afterSilence)).toEqual([false, false]);
+  });
+
+  it("marks the point a silence water was used in ends, so the line can break there", async () => {
+    const points = await runningUsage(
+      {
+        store: store([
+          ["2026-06-15T22:50:00Z", 1000],
+          ["2026-06-15T23:05:00Z", 1005],
+          ["2026-06-16T00:30:00Z", 1050],
+        ]),
+      },
+      {
+        meterId,
+        from: new Date("2026-06-15T23:00:00Z"),
+        to: new Date("2026-06-16T01:00:00Z"),
       },
     );
 

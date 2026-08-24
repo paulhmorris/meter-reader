@@ -112,11 +112,11 @@
                 <p class="text-xs text-muted-foreground">{readingTime(data.at)}</p>
                 <p class="text-base font-semibold">
                   {gallons.format(data.gallons)}
-                  <span class="text-xs font-normal text-muted-foreground">gal so far</span>
+                  <span class="text-xs font-normal text-muted-foreground">gal today</span>
                 </p>
                 {#if data.since !== null}
                   <p class="text-xs text-muted-foreground">
-                    {gallons.format(data.since)} gal since the last reading
+                    + {gallons.format(data.since)}
                   </p>
                 {/if}
                 {#if data.leaking}

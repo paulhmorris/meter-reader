@@ -127,9 +127,18 @@ export interface UsagePoint {
   afterSilence: boolean;
 }
 
-/** Whether the Meter went unheard across a stretch, a Heartbeat being forced every 15 minutes. */
+/**
+ * How long a silence has to run before the running line stops carrying across it. A Heartbeat is
+ * forced every 15 minutes but the SDR misses transmissions, so a gap of one or two is ordinary
+ * reception rather than a Meter gone quiet; an hour of nothing is not, and is where the line
+ * breaks. Wider than the hourly Partial tolerance on purpose: a period reads Partial to warn that
+ * a number may be understated, while the line breaking says the water's whereabouts is unknown.
+ */
+const SILENT_AFTER_MS = 60 * 60 * 1000;
+
+/** Whether the Meter went unheard across a stretch, rather than a transmission or two going astray. */
 function unheard(before: Date, after: Date): boolean {
-  return after.getTime() - before.getTime() > STALE_AFTER_MS.hour;
+  return after.getTime() - before.getTime() > SILENT_AFTER_MS;
 }
 
 /**

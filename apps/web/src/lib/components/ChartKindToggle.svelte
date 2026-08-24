@@ -7,7 +7,7 @@
 
   const CHOICES = [
     { value: "bars" as const, label: "By the hour", Icon: ChartColumn },
-    { value: "line" as const, label: "Reading by reading", Icon: ChartLine },
+    { value: "line" as const, label: "By the reading", Icon: ChartLine },
   ];
 </script>
 

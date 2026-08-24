@@ -178,7 +178,7 @@
 
       <div class="flex items-center justify-between gap-3">
         <h2 class="text-sm font-medium">
-          {stretch}, {running ? "reading by reading" : BY[range.granularity]}
+          {stretch}, {running ? "by the reading" : BY[range.granularity]}
         </h2>
         {#if data.trace !== null}
           <ChartKindToggle bind:kind />
