@@ -18,7 +18,7 @@ ARG SENTRY_RELEASE
 RUN apt-get update \
   && apt-get install -y --no-install-recommends ca-certificates \
   && rm -rf /var/lib/apt/lists/*
-RUN npm ci
+RUN --mount=type=cache,target=/root/.npm npm ci
 COPY . .
 # prisma generate reaches no database, but the shared Prisma config insists on a url.
 # The token is a mount, never a layer, and without it the build just skips the upload.
@@ -31,7 +31,10 @@ RUN --mount=type=secret,id=sentry_auth_token \
 
 FROM manifests AS runtime
 ENV NODE_ENV=production NPM_CONFIG_UPDATE_NOTIFIER=false
-RUN npm ci --omit=dev
+# Half the prod tree is optional peers npm installs for packages that never ask for them at
+# runtime — vite, @sveltejs/kit, tailwindcss, typescript. --legacy-peer-deps declines them.
+# A prod dep that genuinely needs one would fail on boot, not here.
+RUN --mount=type=cache,target=/root/.npm npm ci --omit=dev --legacy-peer-deps
 COPY --from=build /srv/packages/db ./packages/db
 COPY --from=build /srv/apps/web/build ./apps/web/build
 COPY services/ingest ./services/ingest

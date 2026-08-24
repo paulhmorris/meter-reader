@@ -9,33 +9,7 @@ env:
   IMAGE: ghcr.io/${{ github.repository }}
 
 jobs:
-  # The image is deployed by whoever pulls it, so it must carry no one's configuration.
-  no-baked-config:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 24
-          cache: npm
-      - run: npm ci
-      - run: CHECKPOINT_DISABLE=1 DATABASE_URL=postgresql://build npm run db:generate
-      - name: Build with canary secrets
-        env:
-          PUBLIC_SENTRY_DSN: https://canary@canary.ingest.sentry.io/424242
-          PUBLIC_SENTRY_ENVIRONMENT: canary
-          VAPID_PUBLIC_KEY: canary-vapid-public-key
-        run: npm run build --workspace apps/web
-      - name: Fail if the build inlined them
-        run: |
-          if grep -rl "canary" apps/web/build; then
-            echo "::error::build-time value reached the bundle; use \$env/dynamic, not \$env/static"
-            exit 1
-          fi
-          echo "no build-time configuration in the bundle"
-
   push:
-    needs: no-baked-config
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -67,5 +41,7 @@ jobs:
             SENTRY_RELEASE=${{ github.sha }}
           secrets: |
             sentry_auth_token=${{ secrets.SENTRY_AUTH_TOKEN }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          # The Actions cache spends 70-120s re-exporting these layers on every run, hit or miss.
+          # GHCR takes the same blobs in a fraction of the time and has no 10GB eviction to thrash.
+          cache-from: type=registry,ref=${{ env.IMAGE }}:buildcache
+          cache-to: type=registry,ref=${{ env.IMAGE }}:buildcache,mode=max

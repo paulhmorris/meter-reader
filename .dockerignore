@@ -10,3 +10,17 @@ packages/db/src/generated
 .env
 .env.*
 !.env.example
+
+# Nothing below reaches the image, and keeping it out means editing docs or CI
+# does not invalidate the layer the web build sits on.
+.claude
+.github
+docs
+*.md
+.mcp.json
+.oxfmtrc.json
+.oxlintrc.json
+compose.yaml
+Dockerfile
+.dockerignore
+**/*.test.ts
