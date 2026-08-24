@@ -129,13 +129,11 @@
 
     {#if data.health === "broken"}
       <p class="border-danger/40 bg-danger/10 rounded-lg border p-4 text-sm leading-relaxed">
-        We have not picked up this meter for more than three days. Our receiver is most likely down,
-        so nothing here is current — it is where the meter stood when we last heard it.
+        This meter has not been heard from for more than three days.
       </p>
     {:else if data.health === "stale"}
       <p class="border-warning/40 bg-warning/10 rounded-lg border p-4 text-sm leading-relaxed">
-        We have not picked up this meter for over a day. Our receiver may be down, so the numbers
-        below are the last we heard rather than what the meter reads now.
+        This meter has not been heard from in over a day.
       </p>
     {/if}
 
@@ -200,9 +198,7 @@
       {/if}
 
       {#if !isFresh}
-        <p class="text-xs text-muted-foreground">
-          Up to when we last heard from the meter, not to now
-        </p>
+        <p class="text-xs text-muted-foreground">Up to when the meter was last heard from</p>
       {/if}
 
       {#if running && data.trace}
@@ -220,8 +216,7 @@
     {/if}
   {:else}
     <p class="border-warning/40 bg-warning/10 rounded-lg border p-4 text-sm leading-relaxed">
-      We have not picked up this meter at all yet. Until our receiver hears it, there is nothing to
-      show.
+      This meter has not been heard from yet.
     </p>
   {/if}
 

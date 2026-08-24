@@ -9,14 +9,11 @@
   let {
     health,
     lastHeardAt,
-    short = false,
     class: className,
   }: {
     /** Null is a Meter the receiver has never heard, which leaves nothing to judge. */
     health: Health | null;
     lastHeardAt: Date | null;
-    /** The wording a table column has room for, rather than the one a page can spell out. */
-    short?: boolean;
     class?: string;
   } = $props();
 
@@ -59,6 +56,6 @@
       : 'border-warning/40 bg-warning/5 text-warning'} {className}"
   >
     <TriangleAlert class="size-3" aria-hidden="true" />
-    {short ? UNHEARD[health].short : UNHEARD[health].long}
+    {UNHEARD[health].short}
   </Badge>
 {/if}

@@ -442,7 +442,28 @@ describe("runningUsage", () => {
     expect(first).toMatchObject({ at: new Date("2026-06-15T23:00:00Z"), gallons: 0 });
   });
 
-  it("leaves the anchor off when the Meter went unheard into the stretch", async () => {
+  it("anchors on a Reading long before the stretch when no water was used since", async () => {
+    const points = await runningUsage(
+      {
+        store: store([
+          ["2026-06-15T21:00:00Z", 1000],
+          ["2026-06-15T23:30:00Z", 1000],
+        ]),
+      },
+      {
+        meterId,
+        from: new Date("2026-06-15T23:00:00Z"),
+        to: new Date("2026-06-16T00:00:00Z"),
+      },
+    );
+
+    expect(points.map((point) => [point.at.toISOString(), point.gallons])).toEqual([
+      ["2026-06-15T23:00:00.000Z", 0],
+      ["2026-06-15T23:30:00.000Z", 0],
+    ]);
+  });
+
+  it("leaves the anchor off when the Meter went unheard into the stretch and water was used", async () => {
     const points = await runningUsage(
       {
         store: store([
@@ -462,7 +483,26 @@ describe("runningUsage", () => {
     ]);
   });
 
-  it("marks the point a silence longer than a Heartbeat ends, so the line can break there", async () => {
+  it("carries the line across a silence no water was used in, since the total held flat", async () => {
+    const points = await runningUsage(
+      {
+        store: store([
+          ["2026-06-15T22:50:00Z", 1000],
+          ["2026-06-15T23:05:00Z", 1005],
+          ["2026-06-15T23:55:00Z", 1005],
+        ]),
+      },
+      {
+        meterId,
+        from: new Date("2026-06-15T23:00:00Z"),
+        to: new Date("2026-06-16T00:00:00Z"),
+      },
+    );
+
+    expect(points.map((point) => point.afterSilence)).toEqual([false, false, false]);
+  });
+
+  it("marks the point a silence water was used in ends, so the line can break there", async () => {
     const points = await runningUsage(
       {
         store: store([

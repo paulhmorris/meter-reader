@@ -21,9 +21,8 @@
     const run = (to: number) => {
       if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return render(to);
       animate(shown, to, {
-        type: "spring",
-        visualDuration: 0.45,
-        bounce: 0.15,
+        duration: 0.6,
+        ease: [0.16, 1, 0.3, 1],
         onUpdate: (n) => render((shown = n)),
       });
     };

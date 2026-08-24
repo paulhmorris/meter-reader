@@ -66,21 +66,6 @@
       <ArrowLeft class="size-3.5" aria-hidden="true" />
       All meters
     </a>
-
-    {#if latest}
-      <div class="flex flex-wrap items-center gap-2">
-        {#if latest.activeLeak !== "none"}
-          <Badge variant="outline" class="border-danger/40 bg-danger/5 text-danger">
-            {LEAK[latest.activeLeak]}
-          </Badge>
-        {/if}
-        {#if latest.rssi !== null}
-          <Badge variant="outline" class="text-muted-foreground">
-            {decimal.format(latest.rssi)} dBm
-          </Badge>
-        {/if}
-      </div>
-    {/if}
   </header>
 
   <Card>
@@ -110,11 +95,7 @@
     <div class="space-y-3 px-4">
       <p class="text-sm text-muted-foreground">
         {#if data.disabledAt}
-          Disabled {stampedAt(data.disabledAt)}, so it is listed apart from the meters in use.
-          Readings are still stored, and anyone holding access still sees it.
-        {:else}
-          Disable a meter on a house nobody is using and it drops out of the list of meters in use.
-          Readings are still stored, and anyone holding access still sees it.
+          Disabled {stampedAt(data.disabledAt)}
         {/if}
       </p>
 
@@ -136,7 +117,7 @@
       {#if data.claimCode}
         <div class="flex items-center gap-2">
           <p
-            class="min-w-0 flex-1 rounded-lg border border-muted bg-muted p-4 text-center text-lg font-semibold tracking-[0.15em]"
+            class="min-w-0 flex-1 rounded-lg border border-muted bg-muted p-4 text-center font-semibold tracking-[0.15em]"
           >
             <code>{data.claimCode.code}</code>
           </p>
@@ -154,7 +135,7 @@
           </Button>
         </div>
         <p class="text-sm text-muted-foreground">
-          Issued {stampedAt(data.claimCode.createdAt)} and still claimable.
+          Issued {stampedAt(data.claimCode.createdAt)}.
         </p>
       {:else}
         <p class="text-sm text-muted-foreground">No code is claimable for this meter.</p>
@@ -227,7 +208,7 @@
         </Table.Body>
       </Table.Root>
     {:else}
-      <p class="px-4 text-sm text-muted-foreground">No device holds access to this meter.</p>
+      <p class="px-4 text-sm text-muted-foreground">No devices.</p>
     {/if}
   </Card>
 
@@ -242,6 +223,8 @@
           <Table.Row class="hover:bg-transparent">
             <Table.Head class="px-4">Heard</Table.Head>
             <Table.Head class="px-4 text-right">Usage</Table.Head>
+            <Table.Head class="px-4 text-right">Leak Indicator</Table.Head>
+            <Table.Head class="px-4 text-right">RSSI</Table.Head>
           </Table.Row>
         </Table.Header>
         <Table.Body>
@@ -252,6 +235,12 @@
               </Table.Cell>
               <Table.Cell class="px-4 py-2.5 text-right">
                 {reading.usage === null ? "—" : decimal.format(reading.usage)}
+              </Table.Cell>
+              <Table.Cell class="px-4 py-2.5 text-right">
+                {reading.activeLeak === null ? "—" : reading.activeLeak}
+              </Table.Cell>
+              <Table.Cell class="px-4 py-2.5 text-right">
+                {reading.rssi === null ? "—" : decimal.format(reading.rssi)}
               </Table.Cell>
             </Table.Row>
           {/each}

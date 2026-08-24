@@ -123,7 +123,7 @@ export interface UsagePoint {
   /** Gallons used since the stretch opened. */
   gallons: number;
   leaking: boolean;
-  /** Whether the Meter went unheard between the point before this one and this one. */
+  /** Whether a silence between the point before this one and this one hides Usage. */
   afterSilence: boolean;
 }
 
@@ -133,9 +133,18 @@ function unheard(before: Date, after: Date): boolean {
 }
 
 /**
+ * Whether a silence hides Usage, which is what the running line cannot be carried across. Where
+ * the Consumption either side of it agrees, the total is known to have held flat however long the
+ * silence ran, so drawing it flat states a fact rather than interpolating one.
+ */
+function hidesUsage(before: MeterReading, after: MeterReading): boolean {
+  return unheard(before.receivedAt, after.receivedAt) && after.consumption > before.consumption;
+}
+
+/**
  * The running total of Usage across a stretch, a point per Reading at the moment it arrived,
- * rebased so the stretch opens at nothing used. Nothing is interpolated: a silence longer than a
- * Heartbeat is marked, so the line can break rather than carry the total across it (ADR-0002).
+ * rebased so the stretch opens at nothing used. Nothing is interpolated: a silence that hides
+ * Usage is marked, so the line can break rather than carry the total across it (ADR-0002).
  */
 export async function runningUsage(
   { store }: { store: UsageStore },
@@ -147,10 +156,10 @@ export async function runningUsage(
   // Nothing precedes the first Reading the Meter was ever heard in, so it opens the stretch itself.
   const baseline = opening ?? readings[0];
 
-  // A Meter heard just before the stretch pins the line to the left edge at nothing used, rather
-  // than leaving it to start wherever the first Reading of the stretch happened to land.
+  // A Meter heard before the stretch with nothing used since pins the line to the left edge at
+  // nothing used, rather than leaving it to start wherever the first Reading happened to land.
   const traced =
-    opening !== null && !unheard(opening.receivedAt, from)
+    opening !== null && !hidesUsage(opening, readings[0])
       ? [{ ...opening, receivedAt: from }, ...readings]
       : readings;
 
@@ -158,6 +167,6 @@ export async function runningUsage(
     at: reading.receivedAt,
     gallons: Math.round((reading.consumption - baseline.consumption) * 10) / 10,
     leaking: reading.leaking,
-    afterSilence: index > 0 && unheard(traced[index - 1].receivedAt, reading.receivedAt),
+    afterSilence: index > 0 && hidesUsage(traced[index - 1], reading),
   }));
 }

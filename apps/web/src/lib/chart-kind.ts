@@ -7,7 +7,7 @@ export const CHART_KIND_COOKIE = "chart";
 const YEAR_S = 365 * 24 * 60 * 60;
 
 export function chartKind(value: string | undefined): ChartKind {
-  return value === "line" ? "line" : "bars";
+  return value === "bars" ? "bars" : "line";
 }
 
 export function rememberChartKind(kind: ChartKind): void {

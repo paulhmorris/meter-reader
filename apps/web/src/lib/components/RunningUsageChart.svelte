@@ -4,7 +4,7 @@
     /** Gallons used since the stretch opened. */
     gallons: number;
     leaking: boolean;
-    /** Whether the Meter went unheard between the point before this one and this one. */
+    /** Whether a silence between the point before this one and this one hides Usage. */
     afterSilence: boolean;
   }
 </script>
@@ -31,8 +31,8 @@
   );
 
   /**
-   * The line is drawn a run at a time rather than in one stroke, so a silence longer than a
-   * Heartbeat leaves a gap instead of a segment claiming no water crossed it (ADR-0002).
+   * The line is drawn a run at a time rather than in one stroke, so a silence that hides Usage
+   * leaves a gap instead of a segment claiming where the water crossed it (ADR-0002).
    */
   const runs = $derived(
     plotted.reduce<(typeof plotted)[number][][]>((runs, point) => {
@@ -59,7 +59,7 @@
 <figure class="m-0">
   {#if used === 0}
     <p class="rounded-lg border border-dashed border-border p-6 text-sm text-muted-foreground">
-      No water is recorded for any of this stretch — either none was used, or the meter went unheard
+      No water is recorded for any of this stretch. Either none was used, or the meter went unheard
       for all of it.
     </p>
   {:else}
@@ -148,9 +148,11 @@
     </table>
   </div>
 
-  {#if runs.length > 1}
-    <figcaption class="mt-3 text-xs text-muted-foreground">
-      The line breaks where the meter went unheard for longer than it should have
-    </figcaption>
-  {/if}
+  <!-- Held open at one line whether or not it has anything to say, so switching between the line
+       and the bars does not move whatever sits under the chart. -->
+  <figcaption class="mt-3 min-h-4 text-xs text-muted-foreground">
+    {#if runs.length > 1}
+      The line breaks where the meter went unheard while water was being used
+    {/if}
+  </figcaption>
 </figure>

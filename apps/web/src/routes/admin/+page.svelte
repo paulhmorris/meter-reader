@@ -110,7 +110,7 @@
   }
 </script>
 
-<svelte:head><title>Admin — meters</title></svelte:head>
+<svelte:head><title>Admin | meters</title></svelte:head>
 
 <div class="space-y-6">
   <header>
@@ -170,7 +170,7 @@
               </Table.Cell>
               <Table.Cell class="px-3 py-3">
                 <div class="flex flex-col items-start gap-1">
-                  <MeterHealthBadge health={meter.health} lastHeardAt={meter.lastHeardAt} short />
+                  <MeterHealthBadge health={meter.health} lastHeardAt={meter.lastHeardAt} />
                   {#if meter.activeLeak && meter.activeLeak !== "none"}
                     <Badge variant="outline" class="border-danger/40 bg-danger/5 text-danger">
                       {LEAK[meter.activeLeak]}

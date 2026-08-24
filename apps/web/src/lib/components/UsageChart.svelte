@@ -110,7 +110,7 @@
 <figure class="m-0">
   {#if !anyUsage}
     <p class="rounded-lg border border-dashed border-border p-6 text-sm text-muted-foreground">
-      No water is recorded for any of this stretch — either none was used, or the meter went unheard
+      No water is recorded for any of this stretch. Either none was used, or the meter went unheard
       for all of it.
     </p>
   {:else}

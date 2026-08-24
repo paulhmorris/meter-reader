@@ -8,7 +8,7 @@
 
   const CAUSE = {
     continuous: "Water was used in every 15-minute interval for the last 24 hours.",
-    intermittent: "Water was used for at least 50 of the last 96 15-minute intervals.",
+    intermittent: "Water was used for at least fifty of the last ninety-six 15-minute intervals.",
     unknown: "",
   };
 </script>
@@ -21,13 +21,10 @@
   <Droplets class="mt-0.5 size-5 shrink-0 text-danger" aria-hidden="true" />
   <div class="text-sm leading-relaxed">
     <p class="font-semibold">
-      This meter {fresh ? "is" : "was, when we last heard it,"} reporting a leak.
+      This meter {fresh ? "is" : "was, when it was last heard,"} reporting a leak.
     </p>
     {#if CAUSE[level]}
       <p class="mt-1 text-muted-foreground">{CAUSE[level]}</p>
     {/if}
-    <p class="mt-1 text-muted-foreground">
-      It is worth checking, and worth calling a plumber if you cannot find it.
-    </p>
   </div>
 </div>
