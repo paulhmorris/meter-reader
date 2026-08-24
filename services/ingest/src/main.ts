@@ -71,6 +71,12 @@ function enqueue(payload: Buffer): void {
   queue = queue
     .then(async () => {
       const result = await handlePayload({ store, warn }, payload, new Date());
+      if (result.status === "noise") {
+        console.warn(
+          `ingest: dropped a jittered Reading for meter ${result.reading.meterId}: ${result.reading.consumption} < ${result.lastConsumption} gallons`,
+        );
+        return;
+      }
       if (result.status !== "rejected") return;
 
       Sentry.captureMessage("ingest: Reading rejected, Consumption fell", {

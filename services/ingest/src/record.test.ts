@@ -56,12 +56,47 @@ describe("recordReading", () => {
     expect(store.saved).toEqual([reading({ consumption: "8.0" })]);
   });
 
-  it("rejects a Reading below the Meter's last Consumption without storing it", async () => {
+  it("rejects a Reading that has fallen too far to be decode noise, without storing it", async () => {
     const store = fakeStore(lastStored());
-    const fallen = reading({ consumption: "99.9" });
+    const fallen = reading({ consumption: "98.9" });
     const result = await recordReading(store, fallen, receivedAt);
 
     expect(result).toEqual({ status: "rejected", reading: fallen, lastConsumption: "100.0" });
+    expect(store.saved).toEqual([]);
+  });
+
+  it("rejects a Reading from a wrapped counter", async () => {
+    const store = fakeStore(lastStored({ consumption: "549094.6" }));
+    const wrapped = reading({ consumption: "0.4" });
+    const result = await recordReading(store, wrapped, receivedAt);
+
+    expect(result).toEqual({ status: "rejected", reading: wrapped, lastConsumption: "549094.6" });
+    expect(store.saved).toEqual([]);
+  });
+
+  it.each(["99.9", "99.5", "99.0"])(
+    "drops a Reading fallen to %s as decode noise, without reporting it",
+    async (consumption) => {
+      const store = fakeStore(lastStored());
+      const jittered = reading({ consumption });
+      const result = await recordReading(store, jittered, receivedAt);
+
+      expect(result).toEqual({ status: "noise", reading: jittered, lastConsumption: "100.0" });
+      expect(store.saved).toEqual([]);
+    },
+  );
+
+  it("keeps a flapping tenths digit out of the store however often it repeats", async () => {
+    const store = fakeStore(lastStored({ consumption: "549094.6" }));
+    const jittered = reading({ consumption: "549094.5" });
+
+    for (let i = 0; i < 3; i++) {
+      expect(await recordReading(store, jittered, minutesAfter(i * 20))).toEqual({
+        status: "noise",
+        reading: jittered,
+        lastConsumption: "549094.6",
+      });
+    }
     expect(store.saved).toEqual([]);
   });
 

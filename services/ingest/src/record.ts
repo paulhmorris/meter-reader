@@ -31,9 +31,23 @@ export type RecordResult =
   | { status: "stored"; events: MeterEventDraft[] }
   | { status: "heartbeat" }
   | { status: "suppressed" }
+  | { status: "noise"; reading: R900Reading; lastConsumption: string }
   | { status: "rejected"; reading: R900Reading; lastConsumption: string };
 
 const HEARTBEAT_INTERVAL_MS = 15 * 60 * 1000;
+
+/**
+ * How far Consumption may fall and still be read as a mis-decoded transmission rather than a
+ * counter that really moved backwards (ADR-0002). A weak signal flips the counter's low digits,
+ * which shows up as a fall of a tenth or two; a wrap or a swapped meter falls by whole orders
+ * of magnitude, so nothing that needs a human is anywhere near this line.
+ */
+const JITTER_TOLERANCE_TENTHS = 10;
+
+/** Consumption is a fixed one-decimal string, so tenths compare exactly where floats would not. */
+function tenths(consumption: string): number {
+  return Math.round(Number(consumption) * 10);
+}
 
 function transitions(previous: R900Flags, next: R900Flags): MeterEventDraft[] {
   return EVENT_FLAGS.filter((flag) => previous[flag] !== next[flag]).map((flag) => ({
@@ -58,8 +72,9 @@ function sameFlags(a: R900Flags, b: R900Flags): boolean {
  * Meter apart from an unused one. Each flag that moved since the Meter's last stored Reading is
  * recorded as a Meter Event alongside it.
  *
- * A fallen Consumption means a wrapped counter, a swapped meter, or a corrupt packet, all of
- * which need a human (ADR-0002).
+ * A Consumption that has fallen too far to be decode noise means a wrapped counter, a swapped
+ * meter, or a corrupt packet, all of which need a human; a smaller fall is dropped as noise
+ * (ADR-0002). Neither is stored, so Consumption never moves backwards either way.
  */
 export async function recordReading(
   store: ReadingStore,
@@ -72,8 +87,12 @@ export async function recordReading(
     return { status: "stored", events: [] };
   }
 
-  if (Number(reading.consumption) < Number(last.consumption)) {
+  const fall = tenths(last.consumption) - tenths(reading.consumption);
+  if (fall > JITTER_TOLERANCE_TENTHS) {
     return { status: "rejected", reading, lastConsumption: last.consumption };
+  }
+  if (fall > 0) {
+    return { status: "noise", reading, lastConsumption: last.consumption };
   }
 
   if (reading.consumption !== last.consumption || !sameFlags(reading.flags, last.flags)) {

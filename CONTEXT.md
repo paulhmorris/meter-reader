@@ -38,6 +38,10 @@ _Avoid_: Strength, reception, RSSI
 A Reading stored despite being identical to the previous one, forced every 15 minutes so that a silent Meter is distinguishable from a Meter that is simply not using water.
 _Avoid_: Keepalive, ping
 
+**Noise**:
+A transmission whose Consumption fell by little enough to be a mis-decode of the counter's low digits rather than a counter that moved. Dropped without being stored and without reaching Sentry, unlike the larger fall that means a wrap, a swap or a corrupt packet (ADR-0002).
+_Avoid_: Glitch, jitter, bad reading
+
 **Stale**:
 Describes a Meter that has not been heard from recently. Warned at 24 hours, treated as broken at 3 days.
 _Avoid_: Offline, dead, silent
