@@ -1,17 +1,18 @@
 import { error } from "@sveltejs/kit";
+import { chartKind, CHART_KIND_COOKIE } from "$lib/chart-kind.js";
 import { vapidPublicKey } from "$lib/server/config.js";
 import { prisma } from "$lib/server/db.js";
 import { recentEvents } from "$lib/server/events.js";
 import { leakIntervals, overlapsLeak, prismaLeakStore } from "$lib/server/leaks.js";
 import { latestReading, meterHealth, parseMeterId } from "$lib/server/meter.js";
 import { resolveRange } from "$lib/server/ranges.js";
-import { usageByPeriod, type UsagePeriod } from "$lib/server/usage.js";
+import { runningUsage, usageByPeriod, type UsagePeriod } from "$lib/server/usage.js";
 import { prismaUsageStore } from "$lib/server/usage-store.js";
 import type { PageServerLoad } from "./$types.js";
 
 const EVENTS_SHOWN = 50;
 
-export const load: PageServerLoad = async ({ params, url, locals }) => {
+export const load: PageServerLoad = async ({ params, url, locals, cookies }) => {
   const meterId = parseMeterId(params.meterId);
 
   // A Meter nobody granted this device is indistinguishable from one that does not exist.
@@ -21,11 +22,17 @@ export const load: PageServerLoad = async ({ params, url, locals }) => {
   const now = new Date();
   const range = resolveRange(url.searchParams, now);
   const usage = { store: prismaUsageStore(prisma()) };
-  const [reading, meterEvents, chart, transitions] = await Promise.all([
+
+  // A day holds a Reading every quarter of an hour, which is few enough to plot one by one; a
+  // month or a year of them is not, so only Today is offered the running line.
+  const running = range.preset === "today" && !range.drilled;
+
+  const [reading, meterEvents, chart, transitions, trace] = await Promise.all([
     latestReading(prisma(), meterId),
     recentEvents(prisma(), meterId, EVENTS_SHOWN),
     usageByPeriod(usage, { meterId, ...range }),
     prismaLeakStore(prisma()).activeLeakTransitions(meterId, { from: range.from, to: range.to }),
+    running ? runningUsage(usage, { meterId, from: range.from, to: range.to }) : null,
   ]);
 
   const leaks = leakIntervals(transitions, { from: range.from, to: range.to });
@@ -46,6 +53,9 @@ export const load: PageServerLoad = async ({ params, url, locals }) => {
     ...meterEvents,
     range,
     chart: withLeaks(chart),
+    /** The running line's points, or null on a stretch too wide to plot Reading by Reading. */
+    trace,
+    chartKind: chartKind(cookies.get(CHART_KIND_COOKIE)),
     pushKey,
   };
 };

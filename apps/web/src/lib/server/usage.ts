@@ -8,9 +8,24 @@ export interface Boundary {
   from: MeterReading | null;
 }
 
+/** A Reading as the running line plots it: its Consumption and whether it reported a leak. */
+export interface TracedReading extends MeterReading {
+  /** Whether the Meter was reporting an Active Leak when the Reading arrived. */
+  leaking: boolean;
+}
+
+export interface Trace {
+  /** The last Reading before the stretch opens, from which the stretch's Usage is measured. */
+  opening: TracedReading | null;
+  /** Every Reading stored in the stretch, oldest first. */
+  readings: TracedReading[];
+}
+
 export interface UsageStore {
   /** The Readings either side of each instant, in the order the instants were given. */
   boundaryReadings(meterId: bigint, instants: Date[]): Promise<Boundary[]>;
+  /** Every Reading in the stretch, with the one before it opens. */
+  readingsIn(meterId: bigint, stretch: { from: Date; to: Date }): Promise<Trace>;
 }
 
 export interface UsagePeriod {
@@ -100,4 +115,49 @@ export async function usageByPeriod(
         !trusted(period.end, readings[index + 1], limits),
     };
   });
+}
+
+/** One Reading on the running line: where the total stood the moment it arrived. */
+export interface UsagePoint {
+  at: Date;
+  /** Gallons used since the stretch opened. */
+  gallons: number;
+  leaking: boolean;
+  /** Whether the Meter went unheard between the point before this one and this one. */
+  afterSilence: boolean;
+}
+
+/** Whether the Meter went unheard across a stretch, a Heartbeat being forced every 15 minutes. */
+function unheard(before: Date, after: Date): boolean {
+  return after.getTime() - before.getTime() > STALE_AFTER_MS.hour;
+}
+
+/**
+ * The running total of Usage across a stretch, a point per Reading at the moment it arrived,
+ * rebased so the stretch opens at nothing used. Nothing is interpolated: a silence longer than a
+ * Heartbeat is marked, so the line can break rather than carry the total across it (ADR-0002).
+ */
+export async function runningUsage(
+  { store }: { store: UsageStore },
+  { meterId, from, to }: { meterId: bigint; from: Date; to: Date },
+): Promise<UsagePoint[]> {
+  const { opening, readings } = await store.readingsIn(meterId, { from, to });
+  if (readings.length === 0) return [];
+
+  // Nothing precedes the first Reading the Meter was ever heard in, so it opens the stretch itself.
+  const baseline = opening ?? readings[0];
+
+  // A Meter heard just before the stretch pins the line to the left edge at nothing used, rather
+  // than leaving it to start wherever the first Reading of the stretch happened to land.
+  const traced =
+    opening !== null && !unheard(opening.receivedAt, from)
+      ? [{ ...opening, receivedAt: from }, ...readings]
+      : readings;
+
+  return traced.map((reading, index) => ({
+    at: reading.receivedAt,
+    gallons: Math.round((reading.consumption - baseline.consumption) * 10) / 10,
+    leaking: reading.leaking,
+    afterSilence: index > 0 && unheard(traced[index - 1].receivedAt, reading.receivedAt),
+  }));
 }

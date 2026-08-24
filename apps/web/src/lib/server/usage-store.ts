@@ -1,6 +1,6 @@
 import { Prisma, type PrismaClient } from "@meter-reader/db";
 import type { MeterReading } from "./meter.js";
-import type { Boundary, UsageStore } from "./usage.js";
+import type { Boundary, TracedReading, UsageStore } from "./usage.js";
 
 interface BoundaryRow {
   beforeConsumption: number | null;
@@ -11,6 +11,20 @@ interface BoundaryRow {
 
 function reading(consumption: number | null, receivedAt: Date | null): MeterReading | null {
   return consumption === null || receivedAt === null ? null : { consumption, receivedAt };
+}
+
+interface ReadingRow {
+  consumption: Prisma.Decimal;
+  receivedAt: Date;
+  activeLeak: number;
+}
+
+function traced(row: ReadingRow): TracedReading {
+  return {
+    consumption: row.consumption.toNumber(),
+    receivedAt: row.receivedAt,
+    leaking: row.activeLeak > 0,
+  };
 }
 
 export function prismaUsageStore(prisma: PrismaClient): UsageStore {
@@ -44,6 +58,23 @@ export function prismaUsageStore(prisma: PrismaClient): UsageStore {
         before: reading(row.beforeConsumption, row.beforeReceivedAt),
         from: reading(row.fromConsumption, row.fromReceivedAt),
       }));
+    },
+
+    async readingsIn(meterId, { from, to }) {
+      const [opening, readings] = await Promise.all([
+        prisma.reading.findFirst({
+          where: { meterId, receivedAt: { lt: from } },
+          orderBy: [{ receivedAt: "desc" }, { id: "desc" }],
+          select: { consumption: true, receivedAt: true, activeLeak: true },
+        }),
+        prisma.reading.findMany({
+          where: { meterId, receivedAt: { gte: from, lte: to } },
+          orderBy: [{ receivedAt: "asc" }, { id: "asc" }],
+          select: { consumption: true, receivedAt: true, activeLeak: true },
+        }),
+      ]);
+
+      return { opening: opening && traced(opening), readings: readings.map(traced) };
     },
   };
 }

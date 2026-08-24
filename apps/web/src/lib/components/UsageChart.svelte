@@ -13,6 +13,7 @@
   import { cubicOut } from "svelte/easing";
   import { goto } from "$app/navigation";
   import { periodName, tick } from "$lib/chart-format.js";
+  import { scrub, tooltipX } from "$lib/chart-pointer.js";
   import type { Granularity } from "$lib/granularity.js";
 
   let {
@@ -54,16 +55,7 @@
   let helpOpen = $state(false);
   let tooltipRef = $state<HTMLElement>();
 
-  /**
-   * Layerchart flips the tooltip to the pointer's other side rather than clamping it, so on a
-   * chart narrower than twice the tooltip it lands off the screen and reads as no tooltip at all.
-   * Placing it ourselves keeps it beside the pointer and inside the chart.
-   */
-  function tooltipX(chart: any) {
-    const room = chart.containerWidth - (tooltipRef?.offsetWidth ?? 0);
-    return Math.max(0, Math.min(chart.tooltip.x + 12, room));
-  }
-
+  /** Whether the reader asked for stillness, so bars appear rather than growing into place. */
   const still =
     typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -93,67 +85,6 @@
     tooltip: true,
     key: (period: ChartPeriod) => `${windowKey}:${period.start.getTime()}-${period.end.getTime()}`,
   });
-
-  /**
-   * The browser spends the first pixels of a touch deciding between scrolling the page and leaving
-   * the gesture alone, so a scrub that sets off upward is taken away as a scroll. Claiming the
-   * gesture ourselves — on a sideways move, or on a finger that has settled on a bar — lets it
-   * wander in any direction from there, while a swipe that starts as one still scrolls the page.
-   */
-  function scrub(node: HTMLElement) {
-    const SETTLED_MS = 300;
-    const SLOP_PX = 4;
-
-    let from: { x: number; y: number } | null = null;
-    let claimed = false;
-    let settling: ReturnType<typeof setTimeout> | undefined;
-
-    function release() {
-      from = null;
-      claimed = false;
-      clearTimeout(settling);
-    }
-
-    function start(event: TouchEvent) {
-      release();
-      if (event.touches.length !== 1) return;
-      from = { x: event.touches[0].clientX, y: event.touches[0].clientY };
-      settling = setTimeout(() => (claimed = true), SETTLED_MS);
-    }
-
-    function move(event: TouchEvent) {
-      if (!from || event.touches.length !== 1) return;
-
-      if (!claimed) {
-        const dx = Math.abs(event.touches[0].clientX - from.x);
-        const dy = Math.abs(event.touches[0].clientY - from.y);
-        if (dx > SLOP_PX && dx > dy) {
-          claimed = true;
-          clearTimeout(settling);
-        } else if (dy > SLOP_PX) {
-          release();
-          return;
-        } else {
-          return;
-        }
-      }
-
-      event.preventDefault();
-    }
-
-    node.addEventListener("touchstart", start, { passive: true });
-    node.addEventListener("touchmove", move, { passive: false });
-    node.addEventListener("touchend", release);
-    node.addEventListener("touchcancel", release);
-
-    return () => {
-      release();
-      node.removeEventListener("touchstart", start);
-      node.removeEventListener("touchmove", move);
-      node.removeEventListener("touchend", release);
-      node.removeEventListener("touchcancel", release);
-    };
-  }
 
   /**
    * A tap opens the period the tooltip is on, which is the whole band rather than the bar itself:
@@ -239,7 +170,7 @@
           <Tooltip.Root
             {context}
             bind:rootRef={tooltipRef}
-            x={tooltipX(context)}
+            x={tooltipX(context, tooltipRef)}
             y={touching ? 0 : "pointer"}
             anchor="top-left"
             class="border border-border bg-popover text-popover-foreground"

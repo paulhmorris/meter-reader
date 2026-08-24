@@ -6,6 +6,7 @@ const format = (options: Intl.DateTimeFormatOptions) =>
   new Intl.DateTimeFormat(undefined, { timeZone: ZONE, ...options });
 
 const clock = format({ hour: "numeric" });
+const timeOfDay = format({ hour: "numeric", minute: "2-digit" });
 const dayAndMonth = format({ month: "numeric", day: "numeric" });
 const dayNamed = format({ weekday: "short", month: "short", day: "numeric" });
 const dayShort = format({ month: "short", day: "numeric" });
@@ -18,6 +19,11 @@ export function tick(granularity: Granularity, start: Date): string {
   if (granularity === "day") return dayAndMonth.format(start);
   if (granularity === "week") return dayShort.format(start);
   return monthShort.format(start);
+}
+
+/** What the running line calls a Reading: the time of day it arrived, to the minute. */
+export function readingTime(at: Date): string {
+  return timeOfDay.format(at);
 }
 
 /** What the tooltip calls a period, e.g. "3 PM–4 PM" or "Week of Aug 17". */

@@ -1,12 +1,15 @@
 <script lang="ts">
   import { page } from "$app/state";
   import { windowName } from "$lib/chart-format.js";
+  import { rememberChartKind, type ChartKind } from "$lib/chart-kind.js";
+  import ChartKindToggle from "$lib/components/ChartKindToggle.svelte";
   import EventTimeline from "$lib/components/EventTimeline.svelte";
   import LeakBanner from "$lib/components/LeakBanner.svelte";
   import MeterHealthBadge from "$lib/components/MeterHealthBadge.svelte";
   import StatCard from "$lib/components/StatCard.svelte";
   import { Badge } from "$lib/components/ui/badge/index.js";
   import { buttonVariants } from "$lib/components/ui/button/index.js";
+  import RunningUsageChart from "$lib/components/RunningUsageChart.svelte";
   import UsageChart, { type ChartPeriod } from "$lib/components/UsageChart.svelte";
   import type { Granularity } from "$lib/granularity.js";
   import LeakWarnings from "$lib/LeakWarnings.svelte";
@@ -47,6 +50,13 @@
 
   const isFresh = $derived(data.health === "fresh");
   const range = $derived(data.range);
+
+  // svelte-ignore state_referenced_locally
+  let kind = $state<ChartKind>(data.chartKind);
+  $effect(() => rememberChartKind(kind));
+
+  /** Whether the running line is on screen, rather than merely offered. */
+  const running = $derived(data.trace !== null && kind === "line");
 
   /** The stretch the chart is on: the preset itself, or the window a drill-down opened. */
   const stretch = $derived(
@@ -169,7 +179,12 @@
       {/if}
 
       <div class="flex items-center justify-between gap-3">
-        <h2 class="text-sm font-medium">{stretch}, {BY[range.granularity]}</h2>
+        <h2 class="text-sm font-medium">
+          {stretch}, {running ? "reading by reading" : BY[range.granularity]}
+        </h2>
+        {#if data.trace !== null}
+          <ChartKindToggle bind:kind />
+        {/if}
         {#if range.drilled}
           <Badge variant="outline" href={chartHref(range.preset)} class="gap-1">
             <RotateCcw class="size-3" aria-hidden="true" />
@@ -190,7 +205,11 @@
         </p>
       {/if}
 
-      <UsageChart periods={data.chart} granularity={range.granularity} {drillHref} />
+      {#if running && data.trace}
+        <RunningUsageChart points={data.trace} />
+      {:else}
+        <UsageChart periods={data.chart} granularity={range.granularity} {drillHref} />
+      {/if}
     </section>
 
     {#if data.events.length > 0}

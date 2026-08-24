@@ -1,11 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { usageByPeriod, type UsageStore } from "./usage.js";
+import { runningUsage, usageByPeriod, type UsageStore } from "./usage.js";
 
 const meterId = 1_234_567_890n;
 
-function store(readings: [iso: string, consumption: number][]): UsageStore {
+function store(readings: [iso: string, consumption: number, leaking?: boolean][]): UsageStore {
   const stored = readings
-    .map(([iso, consumption]) => ({ consumption, receivedAt: new Date(iso) }))
+    .map(([iso, consumption, leaking]) => ({
+      consumption,
+      receivedAt: new Date(iso),
+      leaking: leaking ?? false,
+    }))
     .sort((a, b) => a.receivedAt.getTime() - b.receivedAt.getTime());
 
   return {
@@ -14,6 +18,15 @@ function store(readings: [iso: string, consumption: number][]): UsageStore {
         before: stored.filter((reading) => reading.receivedAt < instant).at(-1) ?? null,
         from: stored.find((reading) => reading.receivedAt >= instant) ?? null,
       }));
+    },
+
+    async readingsIn(_meterId, { from, to }) {
+      return {
+        opening: stored.filter((reading) => reading.receivedAt < from).at(-1) ?? null,
+        readings: stored.filter(
+          (reading) => reading.receivedAt >= from && reading.receivedAt <= to,
+        ),
+      };
     },
   };
 }
@@ -357,6 +370,7 @@ describe("usageByPeriod", () => {
   it("asks the store for each boundary once", async () => {
     const instants: Date[][] = [];
     const counting: UsageStore = {
+      ...evening,
       async boundaryReadings(meterId, boundaries) {
         instants.push(boundaries);
         return evening.boundaryReadings(meterId, boundaries);
@@ -391,5 +405,128 @@ describe("the period in progress", () => {
     );
 
     expect(current).toMatchObject({ gallons: 7.5, partial: false });
+  });
+});
+
+describe("runningUsage", () => {
+  it("plots each Reading at the moment it arrived, as a total climbing from zero", async () => {
+    const points = await runningUsage(
+      { store: evening },
+      {
+        meterId,
+        from: new Date("2026-06-15T23:00:00Z"),
+        to: new Date("2026-06-16T00:00:00Z"),
+      },
+    );
+
+    expect(points.map((point) => [point.at.toISOString(), point.gallons])).toEqual([
+      ["2026-06-15T23:00:00.000Z", 0],
+      ["2026-06-15T23:00:00.000Z", 2.5],
+      ["2026-06-15T23:15:00.000Z", 2.5],
+      ["2026-06-15T23:30:00.000Z", 10],
+      ["2026-06-15T23:45:00.000Z", 10],
+      ["2026-06-16T00:00:00.000Z", 17.5],
+    ]);
+  });
+
+  it("opens at zero on the Reading before the stretch, so the line starts at its left edge", async () => {
+    const [first] = await runningUsage(
+      { store: evening },
+      {
+        meterId,
+        from: new Date("2026-06-15T23:00:00Z"),
+        to: new Date("2026-06-16T00:00:00Z"),
+      },
+    );
+
+    expect(first).toMatchObject({ at: new Date("2026-06-15T23:00:00Z"), gallons: 0 });
+  });
+
+  it("leaves the anchor off when the Meter went unheard into the stretch", async () => {
+    const points = await runningUsage(
+      {
+        store: store([
+          ["2026-06-15T21:00:00Z", 1000],
+          ["2026-06-15T23:30:00Z", 1040],
+        ]),
+      },
+      {
+        meterId,
+        from: new Date("2026-06-15T23:00:00Z"),
+        to: new Date("2026-06-16T00:00:00Z"),
+      },
+    );
+
+    expect(points).toEqual([
+      { at: new Date("2026-06-15T23:30:00Z"), gallons: 40, leaking: false, afterSilence: false },
+    ]);
+  });
+
+  it("marks the point a silence longer than a Heartbeat ends, so the line can break there", async () => {
+    const points = await runningUsage(
+      {
+        store: store([
+          ["2026-06-15T22:50:00Z", 1000],
+          ["2026-06-15T23:05:00Z", 1005],
+          ["2026-06-15T23:55:00Z", 1050],
+        ]),
+      },
+      {
+        meterId,
+        from: new Date("2026-06-15T23:00:00Z"),
+        to: new Date("2026-06-16T00:00:00Z"),
+      },
+    );
+
+    expect(points.map((point) => point.afterSilence)).toEqual([false, false, true]);
+  });
+
+  it("counts from the first Reading ever heard when nothing precedes the stretch", async () => {
+    const points = await runningUsage(
+      {
+        store: store([
+          ["2026-06-15T23:10:00Z", 1000],
+          ["2026-06-15T23:25:00Z", 1012],
+        ]),
+      },
+      {
+        meterId,
+        from: new Date("2026-06-15T23:00:00Z"),
+        to: new Date("2026-06-16T00:00:00Z"),
+      },
+    );
+
+    expect(points.map((point) => point.gallons)).toEqual([0, 12]);
+  });
+
+  it("carries whether the Meter was reporting a leak when the Reading arrived", async () => {
+    const points = await runningUsage(
+      {
+        store: store([
+          ["2026-06-15T22:55:00Z", 1000, false],
+          ["2026-06-15T23:10:00Z", 1005, true],
+        ]),
+      },
+      {
+        meterId,
+        from: new Date("2026-06-15T23:00:00Z"),
+        to: new Date("2026-06-16T00:00:00Z"),
+      },
+    );
+
+    expect(points.map((point) => point.leaking)).toEqual([false, true]);
+  });
+
+  it("has nothing to plot for a stretch the Meter was never heard in", async () => {
+    const points = await runningUsage(
+      { store: evening },
+      {
+        meterId,
+        from: new Date("2026-06-16T01:00:00Z"),
+        to: new Date("2026-06-16T02:00:00Z"),
+      },
+    );
+
+    expect(points).toEqual([]);
   });
 });
