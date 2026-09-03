@@ -31,8 +31,8 @@
   );
 
   /**
-   * The line is drawn a run at a time rather than in one stroke, so a silence that hides Usage
-   * leaves a gap instead of a segment claiming where the water crossed it (ADR-0002).
+   * The line is drawn a run at a time rather than in one stroke, so a silence that hides Usage is
+   * bridged dashed instead of by a stroke claiming where the water crossed it (ADR-0002).
    */
   const runs = $derived(
     plotted.reduce<(typeof plotted)[number][][]>((runs, point) => {
@@ -40,6 +40,11 @@
       runs[runs.length - 1].push(point);
       return runs;
     }, []),
+  );
+
+  /** The unheard stretches, each held flat from its last Reading to the one that ends it. */
+  const bridges = $derived(
+    runs.slice(1).map((run, index) => [runs[index][runs[index].length - 1], run[0]]),
   );
 
   const used = $derived(points.length > 0 ? points[points.length - 1].gallons : 0);
@@ -91,6 +96,14 @@
         }}
       >
         {#snippet marks()}
+          {#each bridges as bridge, index (index)}
+            <Spline
+              data={bridge}
+              curve={curveStepAfter}
+              strokeWidth={2}
+              class="stroke-chart-usage/50 [stroke-dasharray:4_4]"
+            />
+          {/each}
           {#each runs as run, index (index)}
             <!-- Consumption is only ever read, never interpolated, so the total holds flat until
                  the next Reading rather than sloping towards it. -->
@@ -152,7 +165,7 @@
        and the bars does not move whatever sits under the chart. -->
   <figcaption class="mt-3 min-h-4 text-xs text-muted-foreground">
     {#if runs.length > 1}
-      The line breaks where the meter went unheard while water was being used
+      The line is dashed where the meter went unheard while water was being used
     {/if}
   </figcaption>
 </figure>
