@@ -10,10 +10,10 @@
   "scripts": {
     "dev": "concurrently -n web,ingest -c cyan,magenta \"npm:dev:web\" \"npm:dev:ingest\"",
     "dev:web": "npm run dev --workspace apps/web",
-    "dev:ingest": "npm run dev --workspace services/ingest",
+    "dev:ingest": "sh -c 'set -a; [ -f .env ] && . ./.env; set +a; cd services/ingest && exec go run ./cmd/ingest'",
     "build": "npm run build --workspaces --if-present",
-    "check": "npm run check --workspaces --if-present",
-    "test": "npm run test --workspaces --if-present",
+    "check": "npm run check --workspaces --if-present && cd services/ingest && go vet ./...",
+    "test": "npm run test --workspaces --if-present && cd services/ingest && go test ./...",
     "db:generate": "npm run generate --workspace packages/db",
     "db:migrate": "npm run migrate --workspace packages/db",
     "db:deploy": "npm run deploy --workspace packages/db",

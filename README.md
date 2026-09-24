@@ -9,13 +9,13 @@ See `CONTEXT.md` for the domain language and `docs/adr/` for the decisions behin
 | Workspace          | What it is                                                            |
 | ------------------ | --------------------------------------------------------------------- |
 | `apps/web`         | SvelteKit app. Claim Codes, Grants, the meter page and the Admin surface. |
-| `services/ingest`  | Plain-Node service. Subscribes to MQTT and stores Readings.           |
+| `services/ingest`  | Go service. Subscribes to MQTT and stores Readings.                   |
 | `services/prune`   | Plain-Node job. Thins old Readings by age, run nightly.               |
 | `packages/db`      | Prisma schema, migrations, and the client every process shares.       |
 
 ## Getting started
 
-Requires Node 22+ and a PostgreSQL 17 server.
+Requires Node 22+, Go 1.26+ and a PostgreSQL 17 server.
 
 ```sh
 npm install
@@ -31,7 +31,7 @@ npm run dev              # starts the app and the ingest service together
 
 ## Environment variables
 
-Both processes read a single `.env` at the repo root: `apps/web` loads it in `vite.config.ts`, `services/ingest` through `--env-file-if-exists`, and Prisma through `packages/db/prisma.config.ts`. In production nothing loads a file — supply the variables through the environment.
+Both processes read a single `.env` at the repo root: `apps/web` loads it in `vite.config.ts`, `services/ingest` through the `dev:ingest` script sourcing it, and Prisma through `packages/db/prisma.config.ts`. In production nothing loads a file — supply the variables through the environment.
 
 | Variable                    | Used by      | Required | Meaning                                                                       |
 | --------------------------- | ------------ | -------- | ----------------------------------------------------------------------------- |
@@ -148,11 +148,11 @@ Run from the repo root.
 | --------------------- | ---------------------------------------------------------------- |
 | `npm run dev`         | Starts the app and the ingest service together.                  |
 | `npm run build`       | Builds every workspace that has a build.                         |
-| `npm run check`       | Typechecks every workspace.                                      |
+| `npm run check`       | Typechecks every workspace and vets the ingest service.          |
 | `npm run lint`        | Runs oxlint (correctness rules only).                            |
 | `npm run format`      | Formats the source with oxfmt.                                   |
 | `npm run format:check`| Fails if the source is not formatted, for CI.                    |
-| `npm test`            | Runs every workspace's tests.                                    |
+| `npm test`            | Runs every workspace's tests and the ingest service's.           |
 | `npm run db:generate` | Regenerates the Prisma client.                                   |
 | `npm run db:migrate`  | Creates and applies a migration from schema changes.             |
 | `npm run db:deploy`   | Applies existing migrations, for CI and production.              |
@@ -177,7 +177,7 @@ Only `DATABASE_URL` is required. A failed run exits non-zero and reports to Sent
 
 With a DSN set, `GET /debug-sentry` (development only) throws in the app, and starting the ingest service with `INGEST_DEBUG_SENTRY=1` throws in the service. Both errors should appear in Sentry.
 
-The project is `meter-reader` under the `cosmic-labs` organisation, and one DSN serves both halves: `SENTRY_DSN` for the two Node processes, `PUBLIC_SENTRY_DSN` for the browser. The environment is `development` unless something sets it, and the deployed Compose file sets `production`.
+The project is `meter-reader` under the `cosmic-labs` organisation, and one DSN serves both halves: `SENTRY_DSN` for the app and the ingest service, `PUBLIC_SENTRY_DSN` for the browser. The environment is `development` unless something sets it, and the deployed Compose file sets `production`.
 
 ### Source maps
 

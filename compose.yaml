@@ -69,7 +69,7 @@ services:
   ingest:
     <<: *image
     restart: unless-stopped
-    command: npm run start --workspace services/ingest
+    command: ingest
     environment:
       <<: *shared-env
       MQTT_URL: ${MQTT_URL}

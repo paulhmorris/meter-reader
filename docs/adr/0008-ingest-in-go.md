@@ -1,0 +1,5 @@
+# The ingest service is written in Go
+
+The ingest service is one long-lived process that holds an MQTT subscription, judges each Reading against the last, writes a row and now and then pushes a Leak Warning. In Node it sat at 272 MiB on the host: `npm` and `tsx` wrappers around it, about 45 MB for Node itself and about 50 MB for `@sentry/node` loading OpenTelemetry. Even bundled, with no wrappers, it measured 160 MB. The Go port does the same work in about 17 MB, so it was rewritten, with the same behaviour and the same tests.
+
+The cost is a second language and toolchain in a repo that is otherwise TypeScript, and a data layer written twice. Ingest no longer goes through the Prisma client: it writes raw SQL against the tables Prisma migrates, so the Prisma schema still owns the database, and a migration that renames something ingest touches has to change `services/ingest/store.go` too. Nothing checks this at compile time; a mismatch shows up as a failed query on the first Reading. The app and the prune job stay on Node and Prisma, because they have far more queries and a running web server costs Node's baseline anyway.
