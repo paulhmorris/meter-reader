@@ -10,7 +10,7 @@ See `CONTEXT.md` for the domain language and `docs/adr/` for the decisions behin
 | ------------------ | --------------------------------------------------------------------- |
 | `apps/web`         | SvelteKit app. Claim Codes, Grants, the meter page and the Admin surface. |
 | `services/ingest`  | Go service. Subscribes to MQTT and stores Readings.                   |
-| `services/prune`   | Plain-Node job. Thins old Readings by age, run nightly.               |
+| `services/prune`   | Plain-Node service. Thins old Readings by age, nightly.               |
 | `packages/db`      | Prisma schema, migrations, and the client every process shares.       |
 
 ## Getting started
@@ -83,7 +83,7 @@ cp .env.production.example .env    # then fill it in
 docker compose up -d --build
 ```
 
-The deployed copy is not that one. It lives in the `stacks` repo under `navi/meter-reader`, pulls the published image instead of building, and is deployed by Komodo, which holds every secret in the stack's environment rather than in a `.env` on the host. Deploying a new build is `docker compose pull && docker compose up -d` there, or the same from Komodo; pinning one is setting `METER_READER_TAG` to a `sha-` tag.
+The deployed copy is not that one. It lives in the `homelab` repo under `stacks/meter-reader`, pulls the published image instead of building, and is deployed by Komodo, with secrets in env files on the host that Ansible writes from sops. Deploying a new build is `docker compose pull && docker compose up -d` there, or the same from Komodo; pinning one is setting `METER_READER_TAG` to a `sha-` tag.
 
 The image carries no configuration, so the same one runs for anyone. Both Sentry DSNs, the VAPID keys and every password arrive at runtime, and CI fails the build if a value reaches the bundle at build time.
 
@@ -95,9 +95,9 @@ The image carries no configuration, so the same one runs for anyone. Both Sentry
 | `migrate`    | Runs `prisma migrate deploy` and exits. `web` and `ingest` wait for it.      |
 | `web`        | The SvelteKit app on port 3000, published per `WEB_BIND`.                    |
 | `ingest`     | Subscribes to the broker and stores Readings.                                |
-| `prune`      | Thins old Readings. Not started with the others; run nightly (below).        |
+| `prune`      | Thins old Readings nightly (below).                                          |
 
-`web` and `ingest` are `restart: unless-stopped`, so both come back on failure and after a reboot.
+`web`, `ingest` and `prune` are `restart: unless-stopped`, so all three come back on failure and after a reboot.
 
 ### Reaching the app
 
@@ -157,21 +157,15 @@ Run from the repo root.
 | `npm run db:migrate`  | Creates and applies a migration from schema changes.             |
 | `npm run db:deploy`   | Applies existing migrations, for CI and production.              |
 | `npm run db:seed`     | Seeds a demo Meter with Readings and prints its Claim Code.      |
-| `npm run prune`       | Thins old Readings once and exits. Run nightly (see below).      |
+| `npm run prune`       | Thins old Readings once and exits.                               |
 
 ## Pruning Readings
 
 `npm run prune` thins the Reading table by age — raw for 7 days, then the last Reading of each hour to 60 days, of each day to a year, of each week beyond (ADR-0003). Usage for any period the UI shows at that age is unchanged by a prune, and Meter Events are never touched. It deletes in batches, is safe to run against live ingest, and running it twice deletes nothing the second time.
 
-It runs once and exits, so schedule it nightly. In production that is a Komodo scheduled action against the stack:
+The `prune` service stays up and prunes every night at 09:00 UTC. A failed night reports to Sentry and is retried the next night. `npm run prune` prunes once and exits (non-zero on failure).
 
-```
-docker compose run --rm prune
-```
-
-Locally, or outside Docker, `npm run prune` does the same thing.
-
-Only `DATABASE_URL` is required. A failed run exits non-zero and reports to Sentry.
+Only `DATABASE_URL` is required.
 
 ## Checking Sentry
 

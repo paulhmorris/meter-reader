@@ -83,11 +83,9 @@ services:
       migrate:
         condition: service_completed_successfully
 
-  # Nightly: docker compose run --rm prune
   prune:
     <<: *image
-    profiles: [tools]
-    restart: "no"
+    restart: unless-stopped
     command: npm run start --workspace services/prune
     environment: *shared-env
     depends_on:
