@@ -161,15 +161,6 @@ func handle(deps ingest.PipelineDeps, payload []byte) {
 		log.Printf("ingest: dropped a jittered Reading for meter %d: %s < %s gallons",
 			result.Reading.MeterID, ingest.Gallons(result.Reading.Consumption), ingest.Gallons(result.LastConsumption))
 	case ingest.Rejected:
-		sentry.WithScope(func(scope *sentry.Scope) {
-			scope.SetLevel(sentry.LevelError)
-			scope.SetContext("reading", sentry.Context{
-				"meterId":         result.Reading.MeterID,
-				"consumption":     ingest.Gallons(result.Reading.Consumption),
-				"lastConsumption": ingest.Gallons(result.LastConsumption),
-			})
-			sentry.CaptureMessage("ingest: Reading rejected, Consumption fell")
-		})
 		log.Printf("ingest: rejected a Reading for meter %d: %s < %s gallons",
 			result.Reading.MeterID, ingest.Gallons(result.Reading.Consumption), ingest.Gallons(result.LastConsumption))
 	}
